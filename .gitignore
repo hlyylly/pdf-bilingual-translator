@@ -26,3 +26,7 @@ dist/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# 构建日志/临时
+build_log.txt
+*_err.txt
