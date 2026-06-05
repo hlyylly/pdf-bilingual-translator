@@ -1,0 +1,7 @@
+{
+  "deepseek_key": "sk-你的DeepSeek密钥",
+  "paddle_token": "你的飞桨aistudio_token",
+  "deepseek_model": "deepseek-chat",
+  "concurrent_pdf": 3,
+  "concurrent_translate": 6
+}

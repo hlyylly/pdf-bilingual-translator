@@ -1,0 +1,7 @@
+requests>=2.28
+openai>=1.0
+PyMuPDF>=1.23
+markdown>=3.4
+matplotlib>=3.6
+pillow>=9.0
+customtkinter>=5.2

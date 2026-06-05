@@ -1,0 +1,28 @@
+# 密钥配置（绝不提交）
+config.json
+*.key
+
+# 输出
+output/
+*-dual.pdf
+*-en.md
+*-zh.md
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# 打包
+build/
+dist/
+*.spec.bak
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
