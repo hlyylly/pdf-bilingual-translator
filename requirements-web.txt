@@ -1,0 +1,6 @@
+# Web 版额外依赖（在核心 requirements.txt 基础上）
+-r requirements.txt
+
+fastapi>=0.110
+uvicorn[standard]>=0.27
+python-multipart>=0.0.9

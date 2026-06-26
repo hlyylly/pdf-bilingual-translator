@@ -1,0 +1,9 @@
+{
+  "deepseek_key": "sk-你的DeepSeek密钥",
+  "paddle_token": "你的飞桨aistudio_token",
+  "deepseek_model": "deepseek-chat",
+  "secret_key": "用 python -c \"import secrets;print(secrets.token_hex(32))\" 生成并固定，否则重启后登录失效",
+  "daily_page_quota": 300,
+  "max_concurrent_jobs": 2,
+  "max_upload_mb": 50
+}

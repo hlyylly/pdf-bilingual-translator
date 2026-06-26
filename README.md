@@ -35,6 +35,18 @@ python gui.py
 
 界面里填入两个密钥 → 「添加文件 / 添加文件夹」选 PDF → 设置输出目录 → 「▶ 开始翻译」。密钥会保存在本机，下次自动带出。
 
+## 🌐 网页版（多用户，服务端统一密钥）
+
+FastAPI 后端 + 原生前端：用户注册账号 → 上传 PDF → 后台翻译 → 下载双语对照 PDF。密钥由服务端统一提供，每账号每天有页数额度（默认 300 页/天）。
+
+```bash
+pip install -r requirements-web.txt
+cp webapp/server_config.example.json webapp/server_config.json   # 填入 key
+bash webapp/run.sh                                                # http://localhost:8000
+```
+
+完整部署步骤见 [`webapp/DEPLOY.md`](webapp/DEPLOY.md)。
+
 ## ⌨️ 命令行
 
 ```bash

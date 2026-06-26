@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PDF 双语对照翻译器</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header>
+    <div class="brand">📄 PDF 双语对照翻译器</div>
+    <div id="userbar" class="userbar hidden">
+      <span id="quota" class="quota"></span>
+      <span id="username" class="who"></span>
+      <button id="logout" class="link">退出</button>
+    </div>
+  </header>
+
+  <!-- 登录 / 注册 -->
+  <section id="authView" class="card auth hidden">
+    <div class="tabs">
+      <button class="tab active" data-tab="login">登录</button>
+      <button class="tab" data-tab="register">注册</button>
+    </div>
+    <form id="authForm">
+      <input id="f-username" placeholder="用户名（3-20 位字母/数字/下划线）" autocomplete="username" />
+      <input id="f-password" type="password" placeholder="密码（至少 6 位）" autocomplete="current-password" />
+      <button type="submit" id="authSubmit" class="primary">登录</button>
+      <div id="authMsg" class="msg"></div>
+    </form>
+  </section>
+
+  <!-- 主面板 -->
+  <main id="appView" class="hidden">
+    <section class="card upload">
+      <div id="drop" class="dropzone">
+        <input id="fileInput" type="file" accept="application/pdf" multiple hidden />
+        <div class="dz-inner">
+          <div class="dz-icon">⬆️</div>
+          <div>点击或拖拽 PDF 到此处上传</div>
+          <div class="hint">原英文页 + 中文渲染页 交替输出，公式/图表保留 · 单文件 ≤ <span id="maxmb"></span> MB</div>
+        </div>
+      </div>
+      <div id="uploadMsg" class="msg"></div>
+    </section>
+
+    <section class="card">
+      <h3>任务列表</h3>
+      <div id="jobs" class="jobs"><div class="empty">还没有任务，上传一个 PDF 试试。</div></div>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

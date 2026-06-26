@@ -1,6 +1,10 @@
 # 密钥配置（绝不提交）
 config.json
 *.key
+webapp/server_config.json
+
+# Web 运行时数据（数据库 / 上传 / 输出）
+webapp/data/
 
 # 输出
 output/
