@@ -57,6 +57,25 @@ PAGE_PACKS = _cfg.get("page_packs") or [
 # 会话签名密钥：未配置则生成一次性密钥（重启会使现有登录失效，生产请固定它）
 SECRET_KEY = _cfg.get("secret_key") or secrets.token_hex(32)
 
+# ---- 微信支付（Native 扫码）。证书目录相对 BASE_DIR；apiv3_key 必填才会启用支付 ----
+_wx = _cfg.get("wechat_pay", {}) or {}
+WECHAT_PAY = {
+    "appid": _wx.get("appid", ""),
+    "mchid": _wx.get("mchid", ""),
+    "apiv3_key": _wx.get("apiv3_key", ""),           # 商户平台 API安全 设置的 APIv3 密钥（32位）
+    "cert_serial_no": _wx.get("cert_serial_no", ""),
+    "cert_dir": os.path.join(BASE_DIR, _wx.get("cert_dir", "wxcert")),
+    "notify_url": _wx.get("notify_url", ""),          # 必须 HTTPS，如 https://pdf.996kit.com/api/pay/notify
+}
+
+
+def wechat_pay_ready():
+    """配置齐全（含 apiv3_key + 证书私钥）才认为支付可用。"""
+    w = WECHAT_PAY
+    if not all([w["appid"], w["mchid"], w["apiv3_key"], w["cert_serial_no"], w["notify_url"]]):
+        return False
+    return os.path.exists(os.path.join(w["cert_dir"], "apiclient_key.pem"))
+
 
 def build_translator_config():
     """构造 pdf_translator.Config，注入服务端共享密钥。"""

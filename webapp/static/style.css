@@ -96,6 +96,36 @@ button.primary:disabled { opacity: .6; cursor: default; }
 }
 .dl:hover { filter: brightness(.95); }
 
+/* 充值弹窗 */
+.modal {
+  position: fixed; inset: 0; background: rgba(15,23,41,.5);
+  display: flex; align-items: center; justify-content: center; z-index: 50;
+}
+.modal-box {
+  background: #fff; border-radius: 16px; padding: 26px; width: 380px; max-width: 92vw;
+  position: relative; box-shadow: 0 24px 60px rgba(0,0,0,.25);
+}
+.modal-box h3 { margin: 0 0 16px; font-size: 17px; }
+.modal-close {
+  position: absolute; top: 12px; right: 14px; border: none; background: none;
+  font-size: 24px; color: var(--sub); cursor: pointer; line-height: 1;
+}
+.pack-list { display: flex; flex-direction: column; gap: 12px; }
+.pack {
+  display: flex; align-items: center; justify-content: space-between;
+  border: 1.5px solid var(--line); border-radius: 11px; padding: 16px 18px;
+  background: #fff; cursor: pointer; transition: .15s;
+}
+.pack:hover { border-color: var(--brand); background: #f5f8ff; }
+.pack-pages { font-weight: 700; font-size: 16px; }
+.pack-price { font-weight: 800; font-size: 20px; color: var(--brand-d); }
+.pay-qr { text-align: center; }
+.pay-qr img { width: 220px; height: 220px; border: 1px solid var(--line); border-radius: 10px; }
+.pay-tip { margin: 12px 0 4px; font-size: 14px; }
+.pay-state { font-size: 14px; color: var(--sub); margin: 8px 0 12px; }
+.pay-state.ok { color: var(--ok); font-weight: 600; }
+.pay-state.err { color: var(--err); }
+
 .msg { font-size: 13.5px; min-height: 18px; }
 .msg.err { color: var(--err); }
 .msg.ok { color: var(--ok); }

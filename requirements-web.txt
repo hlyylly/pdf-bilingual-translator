@@ -4,3 +4,7 @@
 fastapi>=0.110
 uvicorn[standard]>=0.27
 python-multipart>=0.0.9
+
+# 微信支付（Native 扫码）
+wechatpayv3>=1.2.17
+qrcode[pil]>=7.4

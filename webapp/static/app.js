@@ -46,13 +46,86 @@ $("#logout").addEventListener("click", async () => {
   location.reload();
 });
 
+// 充值弹窗按钮
+$("#payClose").addEventListener("click", closePay);
+$("#payBack").addEventListener("click", openPay);
+$("#payModal").addEventListener("click", (e) => { if (e.target.id === "payModal") closePay(); });
+
+// ---------- 充值（微信扫码） ----------
+let payPoll = null;
+
+async function openPay(e) {
+  if (e) e.preventDefault();
+  const d = await api("/api/packs");
+  if (!d.pay_enabled) {
+    alert("在线支付即将开放，敬请期待。");
+    return;
+  }
+  $("#packList").innerHTML = d.packs
+    .map(
+      (p) => `<button class="pack" data-i="${p.index}">
+        <div class="pack-pages">${p.pages} 页</div>
+        <div class="pack-price">¥${p.price}</div>
+      </button>`
+    )
+    .join("");
+  $("#packList").querySelectorAll(".pack").forEach((b) =>
+    b.addEventListener("click", () => startPay(b.dataset.i))
+  );
+  $("#packList").classList.remove("hidden");
+  $("#payQr").classList.add("hidden");
+  $("#payModal").classList.remove("hidden");
+}
+
+function closePay() {
+  $("#payModal").classList.add("hidden");
+  if (payPoll) { clearInterval(payPoll); payPoll = null; }
+}
+
+async function startPay(packIndex) {
+  const fd = new FormData();
+  fd.append("pack", packIndex);
+  let r;
+  try {
+    r = await api("/api/pay/create", { method: "POST", body: fd });
+  } catch (err) {
+    alert(err.message);
+    return;
+  }
+  $("#qrImg").src = r.qr;
+  $("#payAmt").textContent = `¥${r.price}（${r.pages} 页）`;
+  $("#payState").textContent = "等待支付…";
+  $("#payState").className = "pay-state";
+  $("#packList").classList.add("hidden");
+  $("#payQr").classList.remove("hidden");
+  // 轮询订单状态
+  if (payPoll) clearInterval(payPoll);
+  payPoll = setInterval(async () => {
+    let s;
+    try { s = await api(`/api/pay/status/${r.out_trade_no}`); } catch (_) { return; }
+    if (s.status === "paid") {
+      clearInterval(payPoll); payPoll = null;
+      $("#payState").textContent = "✓ 支付成功，页数已到账！";
+      $("#payState").className = "pay-state ok";
+      renderUser(s);
+      setTimeout(closePay, 1600);
+    } else if (s.status === "failed") {
+      clearInterval(payPoll); payPoll = null;
+      $("#payState").textContent = "支付未完成，请重试";
+      $("#payState").className = "pay-state err";
+    }
+  }, 2500);
+}
+
 // ---------- 用户/额度 ----------
 function renderUser(u) {
   $("#username").textContent = u.username;
   $("#quota").innerHTML =
     `今日免费 <b>${u.free_remaining_today}</b>/${u.free_daily} 页` +
     ` · 页数包余额 <b>${u.credits}</b> 页` +
-    ` <a class="buy" href="/#pricing" target="_blank">充值</a>`;
+    ` <a class="buy" id="buyBtn" href="#">充值</a>`;
+  const b = $("#buyBtn");
+  if (b) b.addEventListener("click", openPay);
   if (u.max_upload_mb) $("#maxmb").textContent = u.max_upload_mb;
 }
 

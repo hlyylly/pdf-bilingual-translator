@@ -55,6 +55,21 @@
     </section>
   </main>
 
+  <!-- 充值弹窗 -->
+  <div id="payModal" class="modal hidden">
+    <div class="modal-box">
+      <button id="payClose" class="modal-close">×</button>
+      <h3>购买页数包</h3>
+      <div id="packList" class="pack-list"></div>
+      <div id="payQr" class="pay-qr hidden">
+        <img id="qrImg" alt="微信支付二维码" />
+        <div class="pay-tip">请用<strong>微信扫码</strong>支付 <span id="payAmt"></span></div>
+        <div id="payState" class="pay-state">等待支付…</div>
+        <button id="payBack" class="link">← 选其他套餐</button>
+      </div>
+    </div>
+  </div>
+
   <script src="/static/app.js"></script>
 </body>
 </html>

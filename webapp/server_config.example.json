@@ -9,5 +9,13 @@
     {"pages": 1000, "price": 19.9}
   ],
   "max_concurrent_jobs": 2,
-  "max_upload_mb": 50
+  "max_upload_mb": 50,
+  "wechat_pay": {
+    "appid": "wx2226c86b222265cb",
+    "mchid": "1661666490",
+    "apiv3_key": "商户平台-账户中心-API安全 设置的 APIv3 密钥（32位），必填才启用支付",
+    "cert_serial_no": "612068B245D235D84D94EFC97ECB71A4BE37038A",
+    "cert_dir": "wxcert",
+    "notify_url": "https://pdf.996kit.com/api/pay/notify"
+  }
 }

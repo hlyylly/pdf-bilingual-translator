@@ -3,6 +3,9 @@ config.json
 *.key
 webapp/server_config.json
 
+# 微信支付商户证书（绝不提交）
+webapp/wxcert/
+
 # Web 运行时数据（数据库 / 上传 / 输出）
 webapp/data/
 

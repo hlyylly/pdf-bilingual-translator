@@ -1,19 +1,22 @@
 """FastAPI 入口：注册/登录、上传翻译、进度查询、下载。"""
 import os
 import re
+import io
+import time
 import uuid
+import base64
 
 import fitz  # PyMuPDF
 from fastapi import FastAPI, Request, Response, UploadFile, File, Form, Depends, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import db, auth, worker
+from . import db, auth, worker, wechatpay
 from .auth import current_user, COOKIE_NAME, make_token, MAX_AGE
 from .languages import LANGUAGES, LANG_BY_CODE, DEFAULT_TARGET, lang_label
 from .settings import (
     UPLOAD_DIR, BASE_DIR, FREE_DAILY_PAGES, PAGE_PACKS, MAX_UPLOAD_MB,
-    MAX_CONCURRENT_JOBS, server_keys_ready,
+    MAX_CONCURRENT_JOBS, server_keys_ready, wechat_pay_ready,
 )
 
 app = FastAPI(title="PDF 双语翻译器", docs_url=None, redoc_url=None)
@@ -76,9 +79,85 @@ async def languages():
     return {"languages": LANGUAGES, "default": DEFAULT_TARGET}
 
 
+def _packs_public():
+    return [
+        {"index": i, "pages": p["pages"], "price": p["price"],
+         "amount_fen": round(p["price"] * 100)}
+        for i, p in enumerate(PAGE_PACKS)
+    ]
+
+
 @app.get("/api/packs")
 async def packs():
-    return {"free_daily": FREE_DAILY_PAGES, "packs": PAGE_PACKS}
+    return {"free_daily": FREE_DAILY_PAGES, "packs": _packs_public(),
+            "pay_enabled": wechat_pay_ready()}
+
+
+def _qr_data_url(text: str) -> str:
+    """把 code_url 生成二维码 PNG 的 data URL，前端直接 <img> 显示。"""
+    import qrcode
+    img = qrcode.make(text)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+
+
+@app.post("/api/pay/create")
+async def pay_create(pack: int = Form(...), user=Depends(current_user)):
+    if not wechat_pay_ready():
+        raise HTTPException(503, "支付功能尚未开放")
+    packs_list = _packs_public()
+    if pack < 0 or pack >= len(packs_list):
+        raise HTTPException(400, "套餐不存在")
+    p = packs_list[pack]
+    out_trade_no = "dp" + str(int(time.time())) + uuid.uuid4().hex[:8]
+    db.create_order(out_trade_no, user["id"], p["pages"], p["amount_fen"])
+    code_url, err = wechatpay.create_native(
+        out_trade_no, p["amount_fen"],
+        description=f"DualPDF 页数包 {p['pages']} 页", attach=str(user["id"]),
+    )
+    if not code_url:
+        db.mark_order_failed(out_trade_no)
+        raise HTTPException(502, err or "下单失败")
+    return {"out_trade_no": out_trade_no, "pages": p["pages"], "price": p["price"],
+            "qr": _qr_data_url(code_url)}
+
+
+@app.get("/api/pay/status/{out_trade_no}")
+async def pay_status(out_trade_no: str, user=Depends(current_user)):
+    order = db.get_order(out_trade_no, user["id"])
+    if not order:
+        raise HTTPException(404, "订单不存在")
+    # 仍未支付则主动查微信（兜底，不依赖回调）
+    if order["status"] == "pending":
+        state, wx_no = wechatpay.query(out_trade_no)
+        if state == "SUCCESS":
+            db.mark_order_paid(out_trade_no, wx_no)
+            order = db.get_order(out_trade_no, user["id"])
+        elif state in ("CLOSED", "REVOKED", "PAYERROR"):
+            db.mark_order_failed(out_trade_no)
+            order = db.get_order(out_trade_no, user["id"])
+    return {"out_trade_no": out_trade_no, "status": order["status"],
+            "pages": order["pages"], **_user_public(user)}
+
+
+@app.post("/api/pay/notify")
+async def pay_notify(request: Request):
+    result = wechatpay.decode_callback(dict(request.headers), await request.body())
+    if not result:
+        return JSONResponse({"code": "FAIL", "message": "验签失败"}, status_code=400)
+    if result.get("event_type") == "TRANSACTION.SUCCESS":
+        res = result.get("resource", {})
+        out_trade_no = res.get("out_trade_no")
+        order = db.get_order(out_trade_no)
+        if not order:
+            return JSONResponse({"code": "FAIL", "message": "订单不存在"}, status_code=404)
+        # 校验金额，防篡改
+        if res.get("amount", {}).get("total") != order["amount_fen"]:
+            return JSONResponse({"code": "FAIL", "message": "金额不符"}, status_code=400)
+        db.mark_order_paid(out_trade_no, res.get("transaction_id"))
+        return {"code": "SUCCESS", "message": "成功"}
+    return JSONResponse({"code": "FAIL", "message": "非成功通知"}, status_code=400)
 
 
 # ---------------- 认证 ----------------

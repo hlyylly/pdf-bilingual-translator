@@ -56,6 +56,18 @@ def init_db():
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             );
             CREATE INDEX IF NOT EXISTS idx_jobs_user ON jobs(user_id, created_at DESC);
+            CREATE TABLE IF NOT EXISTS orders (
+                out_trade_no TEXT PRIMARY KEY,
+                user_id      INTEGER NOT NULL,
+                pages        INTEGER NOT NULL,
+                amount_fen   INTEGER NOT NULL,
+                status       TEXT NOT NULL DEFAULT 'pending',
+                wx_trade_no  TEXT,
+                created_at   TEXT NOT NULL,
+                paid_at      TEXT,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id, created_at DESC);
             """
         )
         # 兼容旧库：补列
@@ -187,6 +199,59 @@ def list_jobs(user_id, limit=50):
     with _conn() as c:
         return c.execute(
             "SELECT * FROM jobs WHERE user_id=? ORDER BY created_at DESC LIMIT ?",
+            (user_id, limit),
+        ).fetchall()
+
+
+# ---------- 订单（微信支付） ----------
+def create_order(out_trade_no, user_id, pages, amount_fen):
+    with _write_lock, _conn() as c:
+        c.execute(
+            """INSERT INTO orders(out_trade_no,user_id,pages,amount_fen,status,created_at)
+               VALUES(?,?,?,?,'pending',?)""",
+            (out_trade_no, user_id, pages, amount_fen, _now()),
+        )
+
+
+def get_order(out_trade_no, user_id=None):
+    with _conn() as c:
+        if user_id is None:
+            return c.execute("SELECT * FROM orders WHERE out_trade_no=?",
+                             (out_trade_no,)).fetchone()
+        return c.execute("SELECT * FROM orders WHERE out_trade_no=? AND user_id=?",
+                         (out_trade_no, user_id)).fetchone()
+
+
+def mark_order_paid(out_trade_no, wx_trade_no=None):
+    """幂等：仅当订单仍为 pending 时置为 paid 并发放页数，返回是否本次发放。
+
+    回调与轮询可能同时到达，用 UPDATE...WHERE status='pending' 的影响行数保证只发一次。
+    """
+    with _write_lock, _conn() as c:
+        cur = c.execute(
+            "UPDATE orders SET status='paid', wx_trade_no=?, paid_at=? "
+            "WHERE out_trade_no=? AND status='pending'",
+            (wx_trade_no, _now(), out_trade_no),
+        )
+        if cur.rowcount != 1:
+            return False  # 已处理过或不存在
+        row = c.execute("SELECT user_id, pages FROM orders WHERE out_trade_no=?",
+                        (out_trade_no,)).fetchone()
+        c.execute("UPDATE users SET credits = credits + ? WHERE id=?",
+                  (row["pages"], row["user_id"]))
+        return True
+
+
+def mark_order_failed(out_trade_no):
+    with _write_lock, _conn() as c:
+        c.execute("UPDATE orders SET status='failed' WHERE out_trade_no=? AND status='pending'",
+                  (out_trade_no,))
+
+
+def list_orders(user_id, limit=20):
+    with _conn() as c:
+        return c.execute(
+            "SELECT * FROM orders WHERE user_id=? ORDER BY created_at DESC LIMIT ?",
             (user_id, limit),
         ).fetchall()
 
