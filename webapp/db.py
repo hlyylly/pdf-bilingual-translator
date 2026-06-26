@@ -73,6 +73,15 @@ def init_db():
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             );
             CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id, created_at DESC);
+            CREATE TABLE IF NOT EXISTS cdkeys (
+                code       TEXT PRIMARY KEY,
+                pages      INTEGER NOT NULL,
+                batch      TEXT,
+                status     TEXT NOT NULL DEFAULT 'unused',
+                used_by    INTEGER,
+                created_at TEXT NOT NULL,
+                used_at    TEXT
+            );
             """
         )
         # 兼容旧库：补列
@@ -304,6 +313,45 @@ def list_orders(user_id, limit=20):
             "SELECT * FROM orders WHERE user_id=? ORDER BY created_at DESC LIMIT ?",
             (user_id, limit),
         ).fetchall()
+
+
+# ---------- CDKey 兑换码 ----------
+def create_cdkey(code, pages, batch=None):
+    with _write_lock, _conn() as c:
+        try:
+            c.execute("INSERT INTO cdkeys(code,pages,batch,created_at) VALUES(?,?,?,?)",
+                      (code, pages, batch, _now()))
+            return True
+        except sqlite3.IntegrityError:
+            return False
+
+
+def redeem_cdkey(code, user_id):
+    """原子兑换：成功返回 (pages, None)，失败返回 (0, 错误信息)。"""
+    code = (code or "").strip().upper()
+    if not code:
+        return 0, "请输入兑换码"
+    with _write_lock, _conn() as c:
+        row = c.execute("SELECT pages, status FROM cdkeys WHERE code=?", (code,)).fetchone()
+        if not row:
+            return 0, "兑换码无效"
+        if row["status"] != "unused":
+            return 0, "兑换码已被使用"
+        cur = c.execute(
+            "UPDATE cdkeys SET status='used', used_by=?, used_at=? WHERE code=? AND status='unused'",
+            (user_id, _now(), code),
+        )
+        if cur.rowcount != 1:
+            return 0, "兑换码已被使用"
+        c.execute("UPDATE users SET credits = credits + ? WHERE id=?", (row["pages"], user_id))
+        return row["pages"], None
+
+
+def cdkey_stats():
+    with _conn() as c:
+        total = c.execute("SELECT COUNT(*) n FROM cdkeys").fetchone()["n"]
+        used = c.execute("SELECT COUNT(*) n FROM cdkeys WHERE status='used'").fetchone()["n"]
+        return total, used
 
 
 # ---------- 运营统计 ----------

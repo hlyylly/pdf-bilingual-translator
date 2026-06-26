@@ -1,13 +1,14 @@
 * { box-sizing: border-box; }
 :root {
-  --bg: #f4f6fb; --card: #fff; --ink: #1c2333; --sub: #6b7488;
-  --line: #e6e9f0; --brand: #3b5bff; --brand-d: #2c46d6;
-  --ok: #1aa35a; --err: #e23b48; --warn: #c98a00;
+  --bg: #f6f7f9; --card: #fff; --ink: #111827; --sub: #6b7280;
+  --line: #e7e9ee; --brand: #4f46e5; --brand-d: #4338ca; --brand-2: #7c3aed;
+  --soft: #f3f3fd; --ok: #059669; --err: #dc2626; --warn: #d97706;
+  --shadow: 0 1px 2px rgba(16,24,40,.04), 0 4px 16px rgba(16,24,40,.05);
 }
 body {
   margin: 0; background: var(--bg); color: var(--ink);
-  font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
-  font-size: 15px; line-height: 1.5;
+  font-family: -apple-system, "Segoe UI", "Microsoft YaHei", Roboto, sans-serif;
+  font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased;
 }
 .hidden { display: none !important; }
 
@@ -37,8 +38,8 @@ header {
 
 main, .auth { max-width: 760px; margin: 22px auto; padding: 0 16px; }
 .card {
-  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
-  padding: 22px; margin-bottom: 18px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+  padding: 24px; margin-bottom: 18px; box-shadow: var(--shadow);
 }
 .card h3 { margin: 0 0 14px; font-size: 16px; }
 
@@ -65,10 +66,11 @@ button.primary:disabled { opacity: .6; cursor: default; }
 
 /* dropzone */
 .dropzone {
-  border: 2px dashed #c4ccde; border-radius: 12px; padding: 34px 18px;
+  border: 1.5px dashed #cbd0db; border-radius: 14px; padding: 40px 18px;
   text-align: center; cursor: pointer; transition: .15s; color: var(--sub);
+  background: #fcfcfe;
 }
-.dropzone:hover, .dropzone.drag { border-color: var(--brand); background: #f5f8ff; }
+.dropzone:hover, .dropzone.drag { border-color: var(--brand); background: var(--soft); }
 .dz-icon { font-size: 30px; margin-bottom: 6px; }
 .dz-inner > div:nth-child(2) { color: var(--ink); font-weight: 600; }
 .hint { font-size: 12.5px; margin-top: 8px; }
@@ -131,6 +133,21 @@ button.primary:disabled { opacity: .6; cursor: default; }
 .pay-state { font-size: 14px; color: var(--sub); margin: 8px 0 12px; }
 .pay-state.ok { color: var(--ok); font-weight: 600; }
 .pay-state.err { color: var(--err); }
+
+/* 兑换码 */
+.redeem-box { margin-top: 18px; }
+.redeem-or { text-align: center; color: var(--sub); font-size: 12.5px; margin: 4px 0 12px; position: relative; }
+.redeem-or:before, .redeem-or:after {
+  content: ""; position: absolute; top: 50%; width: 28%; height: 1px; background: var(--line);
+}
+.redeem-or:before { left: 0; } .redeem-or:after { right: 0; }
+.redeem-row { display: flex; gap: 8px; }
+#redeemInput {
+  flex: 1; padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px;
+  font-size: 14px; outline: none; text-transform: uppercase;
+}
+#redeemInput:focus { border-color: var(--brand); }
+#redeemMsg { margin-top: 8px; }
 
 /* 充值记录 */
 .orders-list { display: flex; flex-direction: column; gap: 2px; max-height: 60vh; overflow: auto; }

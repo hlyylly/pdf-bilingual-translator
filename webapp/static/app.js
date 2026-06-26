@@ -61,6 +61,10 @@ $("#payClose").addEventListener("click", closePay);
 $("#payBack").addEventListener("click", openPay);
 $("#payModal").addEventListener("click", (e) => { if (e.target.id === "payModal") closePay(); });
 
+// 兑换码
+$("#redeemBtn").addEventListener("click", doRedeem);
+$("#redeemInput").addEventListener("keydown", (e) => { if (e.key === "Enter") doRedeem(); });
+
 // 充值记录
 const ORDER_STATUS = { paid: "已支付", pending: "待支付", failed: "已关闭" };
 $("#ordersBtn").addEventListener("click", async () => {
@@ -99,25 +103,47 @@ let payPoll = null;
 
 async function openPay(e) {
   if (e) e.preventDefault();
-  const d = await api("/api/packs");
-  if (!d.pay_enabled) {
-    alert("在线支付即将开放，敬请期待。");
-    return;
-  }
-  $("#packList").innerHTML = d.packs
-    .map(
-      (p) => `<button class="pack" data-i="${p.index}">
-        <div class="pack-pages">${p.pages} 页</div>
-        <div class="pack-price">¥${p.price}</div>
-      </button>`
-    )
-    .join("");
-  $("#packList").querySelectorAll(".pack").forEach((b) =>
-    b.addEventListener("click", () => startPay(b.dataset.i))
-  );
-  $("#packList").classList.remove("hidden");
+  $("#redeemMsg").textContent = "";
   $("#payQr").classList.add("hidden");
+  $("#redeemBox").classList.remove("hidden");
+  $("#packList").classList.remove("hidden");
   $("#payModal").classList.remove("hidden");
+  const d = await api("/api/packs").catch(() => ({ packs: [], pay_enabled: false }));
+  if (d.pay_enabled && d.packs.length) {
+    $("#packList").innerHTML = d.packs
+      .map(
+        (p) => `<button class="pack" data-i="${p.index}">
+          <div class="pack-pages">${p.pages} 页</div>
+          <div class="pack-price">¥${p.price}</div>
+        </button>`
+      )
+      .join("");
+    $("#packList").querySelectorAll(".pack").forEach((b) =>
+      b.addEventListener("click", () => startPay(b.dataset.i))
+    );
+  } else {
+    $("#packList").innerHTML = `<div class="empty">微信支付维护中，可使用下方兑换码充值。</div>`;
+  }
+}
+
+async function doRedeem() {
+  const code = $("#redeemInput").value.trim();
+  const msg = $("#redeemMsg");
+  if (!code) { msg.className = "msg err"; msg.textContent = "请输入兑换码"; return; }
+  msg.className = "msg";
+  msg.textContent = "兑换中…";
+  const fd = new FormData();
+  fd.append("code", code);
+  try {
+    const r = await api("/api/redeem", { method: "POST", body: fd });
+    msg.className = "msg ok";
+    msg.textContent = `✓ 兑换成功，到账 ${r.pages} 页！`;
+    $("#redeemInput").value = "";
+    renderUser(r);
+  } catch (err) {
+    msg.className = "msg err";
+    msg.textContent = err.message;
+  }
 }
 
 function closePay() {
@@ -140,6 +166,7 @@ async function startPay(packIndex) {
   $("#payState").textContent = "等待支付…";
   $("#payState").className = "pay-state";
   $("#packList").classList.add("hidden");
+  $("#redeemBox").classList.add("hidden");
   $("#payQr").classList.remove("hidden");
   // 轮询订单状态
   if (payPoll) clearInterval(payPoll);

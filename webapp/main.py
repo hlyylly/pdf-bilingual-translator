@@ -153,6 +153,14 @@ async def referral(user=Depends(current_user)):
     }
 
 
+@app.post("/api/redeem")
+async def redeem(code: str = Form(...), user=Depends(current_user)):
+    pages, err = db.redeem_cdkey(code, user["id"])
+    if err:
+        raise HTTPException(400, err)
+    return {"ok": True, "pages": pages, **_user_public(user)}
+
+
 @app.get("/api/orders")
 async def orders(user=Depends(current_user)):
     rows = db.list_orders(user["id"])
@@ -322,6 +330,9 @@ async def admin_stats(admin=Depends(current_admin)):
     stats = db.admin_stats()
     stats["referral_bonus"] = REFERRAL_BONUS
     stats["referral_pages_given"] = stats["referral_converted"] * REFERRAL_BONUS
+    cdk_total, cdk_used = db.cdkey_stats()
+    stats["cdkeys_total"] = cdk_total
+    stats["cdkeys_used"] = cdk_used
     return stats
 
 
