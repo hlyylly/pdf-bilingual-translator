@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DualPDF · 运营后台</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    .adm { max-width: 1080px; margin: 22px auto; padding: 0 16px; }
+    .adm h2 { font-size: 18px; margin: 26px 0 12px; }
+    .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .stat { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
+    .stat .v { font-size: 28px; font-weight: 800; color: var(--ink); letter-spacing: -.5px; }
+    .stat .v small { font-size: 14px; color: var(--ok); font-weight: 700; margin-left: 6px; }
+    .stat .l { color: var(--sub); font-size: 13px; margin-top: 4px; }
+    .stat.rev .v { color: var(--brand-d); }
+    table { width: 100%; border-collapse: collapse; background: #fff;
+      border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: 14px; }
+    th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+    th { background: #f7f8fc; color: var(--sub); font-weight: 600; font-size: 13px; }
+    tr:last-child td { border-bottom: none; }
+    .tag { font-size: 12px; padding: 2px 8px; border-radius: 12px; }
+    .tag.paid { background: #e2f6ec; color: var(--ok); }
+    .tag.pending { background: #fff3e0; color: var(--warn); }
+    .tag.failed { background: #f1f3f9; color: var(--sub); }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .gate { max-width: 380px; margin: 12vh auto; text-align: center; }
+    @media (max-width: 800px) { .cards { grid-template-columns: repeat(2,1fr); } .two-col { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="brand" href="/">📑 DualPDF <span class="brand-zh">对照译</span> · 运营后台</a>
+    <div class="userbar"><a class="link" href="/app">← 工作台</a> <button id="refresh" class="link">刷新</button></div>
+  </header>
+
+  <div id="gate" class="card gate hidden"></div>
+
+  <main id="dash" class="adm hidden">
+    <h2>核心指标</h2>
+    <div class="cards" id="cards"></div>
+
+    <div class="two-col">
+      <div>
+        <h2>最近订单</h2>
+        <table><thead><tr><th>用户</th><th>套餐</th><th>金额</th><th>状态</th><th>时间</th></tr></thead>
+          <tbody id="orders"></tbody></table>
+      </div>
+      <div>
+        <h2>最近注册</h2>
+        <table><thead><tr><th>用户</th><th>余额</th><th>邀请人</th><th>时间</th></tr></thead>
+          <tbody id="users"></tbody></table>
+      </div>
+    </div>
+  </main>
+
+  <script src="/static/admin.js"></script>
+</body>
+</html>

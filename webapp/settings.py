@@ -57,6 +57,9 @@ PAGE_PACKS = _cfg.get("page_packs") or [
 # 邀请有礼：好友通过邀请链接注册并完成首次充值，奖励推荐人的页数
 REFERRAL_BONUS = int(_cfg.get("referral_bonus", 300))
 
+# 运营后台管理员（用户名列表）。只有这些账号能看 /admin
+ADMIN_USERS = _cfg.get("admin_users") or []
+
 # 会话签名密钥：未配置则生成一次性密钥（重启会使现有登录失效，生产请固定它）
 SECRET_KEY = _cfg.get("secret_key") or secrets.token_hex(32)
 

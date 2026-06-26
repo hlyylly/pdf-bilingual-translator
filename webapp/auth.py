@@ -7,7 +7,7 @@ import hashlib
 
 from fastapi import Request, HTTPException
 
-from .settings import SECRET_KEY
+from .settings import SECRET_KEY, ADMIN_USERS
 from . import db
 
 COOKIE_NAME = "session"
@@ -51,4 +51,12 @@ def current_user(request: Request):
     user = db.get_user(uid)
     if not user:
         raise HTTPException(status_code=401, detail="用户不存在")
+    return user
+
+
+def current_admin(request: Request):
+    """依赖：仅 ADMIN_USERS 内的账号可访问，否则 403。"""
+    user = current_user(request)
+    if user["username"] not in ADMIN_USERS:
+        raise HTTPException(status_code=403, detail="无权限")
     return user

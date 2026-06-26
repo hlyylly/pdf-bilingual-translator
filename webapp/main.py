@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import db, auth, worker, wechatpay
-from .auth import current_user, COOKIE_NAME, make_token, MAX_AGE
+from .auth import current_user, current_admin, COOKIE_NAME, make_token, MAX_AGE
 from .languages import LANGUAGES, LANG_BY_CODE, DEFAULT_TARGET, lang_label
 from .settings import (
     UPLOAD_DIR, BASE_DIR, FREE_DAILY_PAGES, PAGE_PACKS, REFERRAL_BONUS,
@@ -316,10 +316,41 @@ async def download(job_id: str, user=Depends(current_user)):
                         filename=download_name)
 
 
+# ---------------- 运营后台 ----------------
+@app.get("/api/admin/stats")
+async def admin_stats(admin=Depends(current_admin)):
+    stats = db.admin_stats()
+    stats["referral_bonus"] = REFERRAL_BONUS
+    stats["referral_pages_given"] = stats["referral_converted"] * REFERRAL_BONUS
+    return stats
+
+
+@app.get("/api/admin/recent")
+async def admin_recent(admin=Depends(current_admin)):
+    return {
+        "orders": [
+            {"username": o["username"], "pages": o["pages"],
+             "price": round(o["amount_fen"] / 100, 2), "status": o["status"],
+             "time": o["paid_at"] or o["created_at"]}
+            for o in db.admin_recent_orders()
+        ],
+        "users": [
+            {"username": u["username"], "credits": u["credits"],
+             "inviter": u["inviter"], "time": u["created_at"]}
+            for u in db.admin_recent_users()
+        ],
+    }
+
+
 # ---------------- 页面 + 静态资源 ----------------
 @app.get("/")
 async def landing():
     return FileResponse(os.path.join(STATIC_DIR, "landing.html"))
+
+
+@app.get("/admin")
+async def admin_page():
+    return FileResponse(os.path.join(STATIC_DIR, "admin.html"))
 
 
 @app.get("/app")

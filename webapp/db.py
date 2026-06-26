@@ -306,6 +306,51 @@ def list_orders(user_id, limit=20):
         ).fetchall()
 
 
+# ---------- 运营统计 ----------
+def admin_stats():
+    d = today()
+    with _conn() as c:
+        one = lambda q, *a: c.execute(q, a).fetchone()[0]
+        users_total = one("SELECT COUNT(*) FROM users")
+        users_today = one("SELECT COUNT(*) FROM users WHERE substr(created_at,1,10)=?", d)
+        jobs_total = one("SELECT COUNT(*) FROM jobs")
+        jobs_today = one("SELECT COUNT(*) FROM jobs WHERE substr(created_at,1,10)=?", d)
+        pages_done = one("SELECT COALESCE(SUM(pages),0) FROM jobs WHERE status='done'")
+        orders_paid = one("SELECT COUNT(*) FROM orders WHERE status='paid'")
+        rev_total = one("SELECT COALESCE(SUM(amount_fen),0) FROM orders WHERE status='paid'")
+        rev_today = one("SELECT COALESCE(SUM(amount_fen),0) FROM orders "
+                        "WHERE status='paid' AND substr(paid_at,1,10)=?", d)
+        credits_out = one("SELECT COALESCE(SUM(credits),0) FROM users")
+        invited = one("SELECT COUNT(*) FROM users WHERE referred_by IS NOT NULL")
+        ref_converted = one("SELECT COUNT(*) FROM users WHERE referral_rewarded=1")
+        return {
+            "users_total": users_total, "users_today": users_today,
+            "jobs_total": jobs_total, "jobs_today": jobs_today,
+            "pages_translated": pages_done,
+            "orders_paid": orders_paid,
+            "revenue_total": round(rev_total / 100, 2),
+            "revenue_today": round(rev_today / 100, 2),
+            "credits_outstanding": credits_out,
+            "invited": invited, "referral_converted": ref_converted,
+        }
+
+
+def admin_recent_orders(limit=15):
+    with _conn() as c:
+        return c.execute(
+            "SELECT o.out_trade_no, u.username, o.pages, o.amount_fen, o.status, "
+            "o.paid_at, o.created_at FROM orders o JOIN users u ON u.id=o.user_id "
+            "ORDER BY o.created_at DESC LIMIT ?", (limit,)).fetchall()
+
+
+def admin_recent_users(limit=15):
+    with _conn() as c:
+        return c.execute(
+            "SELECT u.username, u.credits, u.created_at, r.username AS inviter "
+            "FROM users u LEFT JOIN users r ON r.id=u.referred_by "
+            "ORDER BY u.created_at DESC LIMIT ?", (limit,)).fetchall()
+
+
 def reset_stuck_jobs():
     """启动时把残留的 running/queued 任务标记为失败（进程重启后无法恢复内存任务）。"""
     with _write_lock, _conn() as c:
