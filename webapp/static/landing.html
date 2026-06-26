@@ -17,7 +17,7 @@
       <a href="#langs">语言</a>
       <a href="#pricing">价格</a>
     </div>
-    <div class="nav-cta">
+    <div class="nav-cta" id="navCta">
       <a class="btn btn-ghost" href="/app">登录</a>
       <a class="btn btn-primary" href="/app">免费试用</a>
     </div>
@@ -176,5 +176,21 @@
     </div>
     <div class="copy">© 2025 DualPDF · 保留排版的 PDF 多语言对照翻译</div>
   </footer>
+
+  <script>
+    // 已登录则把导航的「登录/免费试用」换成账户名 + 进入工作台
+    fetch("/api/me", { credentials: "same-origin" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((u) => {
+        if (!u) return;
+        document.getElementById("navCta").innerHTML =
+          '<span class="nav-user">👤 ' + u.username + "</span>" +
+          '<a class="btn btn-primary" href="/app">进入工作台 →</a>';
+        document.querySelectorAll('.hero-btns a.btn-primary, .cta-band a.btn').forEach(function (a) {
+          a.textContent = "进入工作台 →";
+        });
+      })
+      .catch(function () {});
+  </script>
 </body>
 </html>

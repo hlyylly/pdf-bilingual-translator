@@ -44,7 +44,8 @@ h2 { font-size: 34px; font-weight: 800; letter-spacing: -.5px; }
 .brand-zh { color: var(--brand); }
 .nav-links { display: flex; gap: 26px; font-size: 15px; color: var(--sub); }
 .nav-links a:hover { color: var(--ink); }
-.nav-cta { display: flex; gap: 10px; }
+.nav-cta { display: flex; gap: 10px; align-items: center; }
+.nav-user { font-weight: 600; color: var(--ink); font-size: 15px; }
 
 /* 主视觉 */
 .hero {
