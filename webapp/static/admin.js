@@ -71,21 +71,61 @@ async function loadBatches() {
   try {
     const d = await api("/api/admin/cdkeys");
     $("#cdkBatches").innerHTML = d.batches.length
-      ? d.batches.map((b) => `<tr>
+      ? d.batches.map((b) => {
+          const eb = encodeURIComponent(b.batch);
+          return `<tr>
           <td>${b.batch}</td><td>${b.pages} 页</td><td>${b.total}</td>
           <td>${b.used}</td><td><b>${b.left}</b></td>
-          <td>${b.left ? `<button class="link" data-batch="${encodeURIComponent(b.batch)}" data-pages="${b.pages}">导出未用</button>` : "—"}</td>
-        </tr>`).join("")
+          <td><button class="link det" data-batch="${eb}">明细</button>
+            ${b.left ? `· <button class="link exp" data-batch="${eb}" data-pages="${b.pages}">导出未用</button>` : ""}</td>
+        </tr>`;
+        }).join("")
       : `<tr><td colspan="6" style="color:var(--sub)">还没有卡密，用上方表单生成。</td></tr>`;
-    $("#cdkBatches").querySelectorAll("button[data-batch]").forEach((btn) =>
+    $("#cdkBatches").querySelectorAll("button.exp").forEach((btn) =>
       btn.addEventListener("click", async () => {
         const batch = decodeURIComponent(btn.dataset.batch);
         const r = await api(`/api/admin/cdkeys/export?batch=${encodeURIComponent(batch)}&pages=${btn.dataset.pages}`);
         showCodes(r.codes, `批次「${batch}」剩余 ${r.codes.length} 个未用卡密`);
       })
     );
+    $("#cdkBatches").querySelectorAll("button.det").forEach((btn) =>
+      btn.addEventListener("click", () => queryCdkeys({ batch: decodeURIComponent(btn.dataset.batch) }))
+    );
   } catch (_) {}
 }
+
+const CDK_ST = { used: "已使用", unused: "未使用" };
+const cdkTime = (t) => (t ? String(t).replace("T", " ").slice(0, 16) : "—");
+
+async function queryCdkeys(opts) {
+  opts = opts || {};
+  const q = opts.q !== undefined ? opts.q : $("#cdkQ").value.trim();
+  const status = opts.status !== undefined ? opts.status : $("#cdkStatus").value;
+  const batch = opts.batch || "";
+  const params = new URLSearchParams();
+  if (q) params.set("q", q);
+  if (status) params.set("status", status);
+  if (batch) params.set("batch", batch);
+  $("#cdkListMsg").textContent = "查询中…";
+  try {
+    const d = await api("/api/admin/cdkeys/list?" + params.toString());
+    $("#cdkListMsg").textContent = batch
+      ? `批次「${batch}」共 ${d.items.length} 条`
+      : `共 ${d.items.length} 条`;
+    $("#cdkList").innerHTML = d.items.length
+      ? d.items.map((k) => `<tr>
+          <td class="code">${k.code}</td><td>${k.pages}</td><td>${k.batch}</td>
+          <td class="st-${k.status}">${CDK_ST[k.status] || k.status}</td>
+          <td>${k.used_by || "—"}</td><td>${cdkTime(k.used_at)}</td></tr>`).join("")
+      : `<tr><td colspan="6" style="color:var(--sub)">没有匹配的卡密。</td></tr>`;
+  } catch (e) {
+    $("#cdkListMsg").textContent = "查询失败";
+  }
+}
+
+$("#cdkQuery").addEventListener("click", () => queryCdkeys());
+$("#cdkQ").addEventListener("keydown", (e) => { if (e.key === "Enter") queryCdkeys(); });
+$("#cdkStatus").addEventListener("change", () => queryCdkeys());
 
 $("#cdkGen").addEventListener("click", async () => {
   const pages = +$("#cdkPages").value;
@@ -100,6 +140,7 @@ $("#cdkGen").addEventListener("click", async () => {
     showCodes(r.codes, `已生成 ${r.count} 个 · 每个 ${r.pages} 页${r.batch ? " · 批次 " + r.batch : ""}`);
     loadBatches();
     load();
+    queryCdkeys({ q: "", status: "" });
   } catch (e) {
     alert("生成失败：" + (e.message || e.code));
   } finally {

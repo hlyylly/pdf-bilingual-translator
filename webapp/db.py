@@ -365,6 +365,27 @@ def cdkey_batches():
         ).fetchall()
 
 
+def cdkey_list(q=None, status=None, batch=None, limit=200):
+    """卡密明细：可按 码模糊/状态/批次 过滤，带使用者用户名。"""
+    sql = ("SELECT k.code, k.pages, k.batch, k.status, k.created_at, k.used_at, "
+           "u.username AS used_by FROM cdkeys k LEFT JOIN users u ON u.id=k.used_by "
+           "WHERE 1=1")
+    args = []
+    if q:
+        sql += " AND k.code LIKE ?"
+        args.append("%" + q.upper() + "%")
+    if status in ("used", "unused"):
+        sql += " AND k.status=?"
+        args.append(status)
+    if batch is not None:
+        sql += " AND COALESCE(k.batch,'(未命名)')=?"
+        args.append(batch)
+    sql += " ORDER BY k.created_at DESC LIMIT ?"
+    args.append(limit)
+    with _conn() as c:
+        return c.execute(sql, args).fetchall()
+
+
 def unused_codes(batch=None, pages=None, limit=5000):
     """导出未使用的卡密码列表。"""
     q = "SELECT code FROM cdkeys WHERE status='unused'"

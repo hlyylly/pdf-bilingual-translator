@@ -36,6 +36,13 @@
     .cdk-result-head .link { margin-left: 12px; }
     #cdkCodes { width: 100%; font-family: monospace; font-size: 13px; border: 1px solid var(--line); border-radius: 10px; padding: 10px; resize: vertical; }
     .cdk-card .link { color: var(--brand); }
+    .cdk-search { display: flex; gap: 8px; align-items: center; margin: 22px 0 10px; flex-wrap: wrap; }
+    .cdk-search input { flex: 1; min-width: 220px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 9px; font-size: 14px; }
+    .cdk-search input:focus { border-color: var(--brand); outline: none; }
+    .cdk-search select { padding: 9px 10px; border: 1px solid var(--line); border-radius: 9px; font-size: 14px; }
+    .cdk-listmsg { color: var(--sub); font-size: 13px; }
+    td.code { font-family: monospace; font-size: 13px; }
+    .st-used { color: var(--warn); } .st-unused { color: var(--ok); }
     @media (max-width: 800px) { .cards { grid-template-columns: repeat(2,1fr); } .two-col { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -72,6 +79,21 @@
       <table style="margin-top:16px">
         <thead><tr><th>批次</th><th>单卡页数</th><th>总数</th><th>已用</th><th>剩余</th><th>操作</th></tr></thead>
         <tbody id="cdkBatches"></tbody>
+      </table>
+
+      <div class="cdk-search">
+        <input id="cdkQ" placeholder="查询指定卡密 / 批次（输入码片段）" autocomplete="off" />
+        <select id="cdkStatus">
+          <option value="">全部状态</option>
+          <option value="unused">未使用</option>
+          <option value="used">已使用</option>
+        </select>
+        <button id="cdkQuery" class="btn-copy">查询</button>
+        <span id="cdkListMsg" class="cdk-listmsg"></span>
+      </div>
+      <table>
+        <thead><tr><th>卡密</th><th>页数</th><th>批次</th><th>状态</th><th>使用者</th><th>使用时间</th></tr></thead>
+        <tbody id="cdkList"></tbody>
       </table>
     </div>
 

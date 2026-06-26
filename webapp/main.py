@@ -368,6 +368,18 @@ async def admin_export_cdkeys(batch: str = "", pages: int = 0, admin=Depends(cur
     return {"codes": codes}
 
 
+@app.get("/api/admin/cdkeys/list")
+async def admin_cdkeys_list(q: str = "", status: str = "", batch: str = "",
+                            admin=Depends(current_admin)):
+    rows = db.cdkey_list(q.strip() or None, status or None, batch.strip() or None)
+    return {"items": [
+        {"code": r["code"], "pages": r["pages"], "batch": r["batch"] or "(未命名)",
+         "status": r["status"], "used_by": r["used_by"], "used_at": r["used_at"],
+         "created_at": r["created_at"]}
+        for r in rows
+    ]}
+
+
 @app.get("/api/admin/recent")
 async def admin_recent(admin=Depends(current_admin)):
     return {
