@@ -15,6 +15,8 @@ class Config:
     # ---- DeepSeek ----
     deepseek_base: str = "https://api.deepseek.com"
     deepseek_model: str = "deepseek-chat"
+    # ---- 翻译目标语言（英文名，用于 prompt；源语言自动识别）----
+    target_lang: str = "Simplified Chinese"
     # ---- PaddleOCR-VL ----
     paddle_job_url: str = "https://paddleocr.aistudio-app.com/api/v2/ocr/jobs"
     paddle_model: str = "PaddleOCR-VL-1.6"

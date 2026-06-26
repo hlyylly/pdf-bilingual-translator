@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PDF 双语对照翻译器</title>
-  <link rel="stylesheet" href="/style.css" />
+  <title>DualPDF 对照译 · 工作台</title>
+  <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
   <header>
-    <div class="brand">📄 PDF 双语对照翻译器</div>
+    <a class="brand" href="/">📑 DualPDF <span class="brand-zh">对照译</span></a>
     <div id="userbar" class="userbar hidden">
       <span id="quota" class="quota"></span>
       <span id="username" class="who"></span>
@@ -33,12 +33,17 @@
   <!-- 主面板 -->
   <main id="appView" class="hidden">
     <section class="card upload">
+      <div class="lang-row">
+        <label for="langSelect">翻译成</label>
+        <select id="langSelect"></select>
+        <span class="lang-hint">原文语言自动识别</span>
+      </div>
       <div id="drop" class="dropzone">
         <input id="fileInput" type="file" accept="application/pdf" multiple hidden />
         <div class="dz-inner">
           <div class="dz-icon">⬆️</div>
           <div>点击或拖拽 PDF 到此处上传</div>
-          <div class="hint">原英文页 + 中文渲染页 交替输出，公式/图表保留 · 单文件 ≤ <span id="maxmb"></span> MB</div>
+          <div class="hint">原文页 + 译文页 交替对照输出，公式/图表保留 · 单文件 ≤ <span id="maxmb"></span> MB</div>
         </div>
       </div>
       <div id="uploadMsg" class="msg"></div>
@@ -50,6 +55,6 @@
     </section>
   </main>
 
-  <script src="/app.js"></script>
+  <script src="/static/app.js"></script>
 </body>
 </html>

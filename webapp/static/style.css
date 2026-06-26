@@ -16,7 +16,18 @@ header {
   padding: 14px 22px; background: var(--card); border-bottom: 1px solid var(--line);
   position: sticky; top: 0; z-index: 10;
 }
-.brand { font-weight: 700; font-size: 17px; }
+.brand { font-weight: 800; font-size: 18px; color: var(--ink); text-decoration: none; letter-spacing: -.2px; }
+.brand-zh { color: var(--brand); font-weight: 700; margin-left: 2px; }
+
+/* 语言选择 */
+.lang-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.lang-row label { font-weight: 600; font-size: 14px; }
+#langSelect {
+  padding: 9px 12px; border: 1px solid var(--line); border-radius: 9px;
+  font-size: 15px; background: #fff; cursor: pointer; min-width: 150px;
+}
+#langSelect:focus { border-color: var(--brand); outline: none; }
+.lang-hint { font-size: 12.5px; color: var(--sub); }
 .userbar { display: flex; align-items: center; gap: 14px; font-size: 14px; }
 .quota { color: var(--sub); }
 .who { font-weight: 600; }

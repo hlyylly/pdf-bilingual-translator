@@ -53,6 +53,20 @@ function renderUser(u) {
   if (u.max_upload_mb) $("#maxmb").textContent = u.max_upload_mb;
 }
 
+// ---------- 语言下拉 ----------
+async function loadLanguages() {
+  const sel = $("#langSelect");
+  if (sel.options.length) return;
+  try {
+    const d = await api("/api/languages");
+    sel.innerHTML = d.languages
+      .map((l) => `<option value="${l.code}">${l.label}</option>`)
+      .join("");
+    sel.value = localStorage.getItem("target_lang") || d.default;
+  } catch (_) {}
+  sel.addEventListener("change", () => localStorage.setItem("target_lang", sel.value));
+}
+
 // ---------- 上传 ----------
 const drop = $("#drop");
 const fileInput = $("#fileInput");
@@ -70,11 +84,13 @@ async function handleFiles(files) {
   const pdfs = [...files].filter((f) => f.name.toLowerCase().endsWith(".pdf"));
   if (!pdfs.length) return;
   const msg = $("#uploadMsg");
+  const targetLang = $("#langSelect").value || "zh-Hans";
   for (const f of pdfs) {
     msg.className = "msg";
     msg.textContent = `上传中：${f.name} …`;
     const fd = new FormData();
     fd.append("file", f);
+    fd.append("target_lang", targetLang);
     try {
       const r = await api("/api/upload", { method: "POST", body: fd });
       renderUser(r);
@@ -106,7 +122,8 @@ function jobCard(j) {
   return `
     <div class="job">
       <div class="job-top">
-        <span class="job-name">${escapeHtml(j.filename)} <small style="color:var(--sub)">· ${j.pages} 页</small></span>
+        <span class="job-name">${escapeHtml(j.filename)}
+          <small style="color:var(--sub)">· ${j.pages} 页 · 译为 ${escapeHtml(j.target_label || "")}</small></span>
         <span class="badge ${j.status}">${STATUS_TEXT[j.status] || j.status}</span>
       </div>
       <div class="bar"><i style="width:${pct}%"></i></div>
@@ -140,6 +157,7 @@ async function boot() {
   try {
     const u = await api("/api/me");
     renderUser(u);
+    await loadLanguages();
     $("#authView").classList.add("hidden");
     $("#appView").classList.remove("hidden");
     $("#userbar").classList.remove("hidden");

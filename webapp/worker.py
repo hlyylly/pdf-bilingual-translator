@@ -11,6 +11,7 @@ from pdf_translator.translate import translate_all_pages
 from pdf_translator.render import render_dual_pdf
 
 from . import db
+from .languages import lang_en
 from .settings import OUTPUT_DIR, MAX_CONCURRENT_JOBS, build_translator_config
 
 _pool = ThreadPoolExecutor(max_workers=MAX_CONCURRENT_JOBS, thread_name_prefix="job")
@@ -24,6 +25,7 @@ def _run(job_id: str, user_id: int, pdf_path: str):
     config = build_translator_config()
     job = db.get_job(job_id)
     reserved_pages = job["pages"] if job else 0
+    config.target_lang = lang_en(job["target_lang"] if job else "zh-Hans")
     tail = []  # 最近日志行
 
     def log(line: str):

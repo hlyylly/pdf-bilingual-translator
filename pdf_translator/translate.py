@@ -5,15 +5,20 @@ import threading
 import openai
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-SYSTEM_PROMPT = (
-    "You are a professional academic translator. "
-    "Translate English Markdown to Simplified Chinese (zh-CN) while keeping ALL Markdown "
-    "syntax intact: headings (#, ##, ###), lists (-, *, 1.), formulas ($...$ and $$...$$), "
-    "code blocks (```), HTML tables (<table>...</table>), bold/italic (**, *), links. "
-    "Keep LaTeX formulas, math, variable names, proper nouns and URLs UNCHANGED. "
-    "For <table> blocks, translate only the human-readable cell text, keep the HTML tags. "
-    "Output ONLY the translated Markdown, no explanations."
-)
+def build_system_prompt(target_lang="Simplified Chinese"):
+    """根据目标语言生成翻译指令；源语言由模型自动识别，已是目标语言则保持不变。"""
+    return (
+        "You are a professional academic translator. "
+        f"Translate the given Markdown document into {target_lang}, "
+        "automatically detecting the source language. "
+        f"If a segment is already written in {target_lang}, leave it unchanged. "
+        "Keep ALL Markdown syntax intact: headings (#, ##, ###), lists (-, *, 1.), "
+        "formulas ($...$ and $$...$$), code blocks (```), HTML tables (<table>...</table>), "
+        "bold/italic (**, *), links. "
+        "Keep LaTeX formulas, math, variable names, proper nouns and URLs UNCHANGED. "
+        "For <table> blocks, translate only the human-readable cell text, keep the HTML tags. "
+        f"Output ONLY the translated Markdown in {target_lang}, no explanations."
+    )
 
 _IMG_TAG_RE = re.compile(r'<img\b[^>]*?/?>', re.IGNORECASE)
 _local = threading.local()
@@ -48,13 +53,14 @@ def translate_page(md_text, idx, config, log=print):
         return idx, md_text
     protected, holders = _protect_imgs(md_text)
     client = _get_client(config)
+    system_prompt = build_system_prompt(getattr(config, "target_lang", "Simplified Chinese"))
     for attempt in range(3):
         try:
             resp = client.chat.completions.create(
                 model=config.deepseek_model,
                 temperature=0,
                 messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "system", "content": system_prompt},
                     {"role": "user", "content": protected},
                 ],
             )

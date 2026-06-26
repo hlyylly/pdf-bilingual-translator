@@ -41,6 +41,7 @@ def init_db():
                 user_id     INTEGER NOT NULL,
                 filename    TEXT NOT NULL,
                 pages       INTEGER NOT NULL DEFAULT 0,
+                target_lang TEXT NOT NULL DEFAULT 'zh-Hans',
                 status      TEXT NOT NULL,
                 phase       TEXT NOT NULL DEFAULT '',
                 progress    INTEGER NOT NULL DEFAULT 0,
@@ -54,6 +55,10 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_jobs_user ON jobs(user_id, created_at DESC);
             """
         )
+        # 兼容旧库：补列
+        cols = {r["name"] for r in c.execute("PRAGMA table_info(jobs)").fetchall()}
+        if "target_lang" not in cols:
+            c.execute("ALTER TABLE jobs ADD COLUMN target_lang TEXT NOT NULL DEFAULT 'zh-Hans'")
 
 
 # ---------- 密码哈希（stdlib pbkdf2，无需编译依赖） ----------
@@ -123,12 +128,12 @@ def add_usage(user_id: int, pages: int):
 
 
 # ---------- 任务 ----------
-def create_job(job_id, user_id, filename, pages):
+def create_job(job_id, user_id, filename, pages, target_lang="zh-Hans"):
     with _write_lock, _conn() as c:
         c.execute(
-            """INSERT INTO jobs(id,user_id,filename,pages,status,total,created_at,updated_at)
-               VALUES(?,?,?,?,?,?,?,?)""",
-            (job_id, user_id, filename, pages, "queued", pages, _now(), _now()),
+            """INSERT INTO jobs(id,user_id,filename,pages,target_lang,status,total,created_at,updated_at)
+               VALUES(?,?,?,?,?,?,?,?,?)""",
+            (job_id, user_id, filename, pages, target_lang, "queued", pages, _now(), _now()),
         )
 
 

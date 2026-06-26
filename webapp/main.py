@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import db, auth, worker
 from .auth import current_user, COOKIE_NAME, make_token, MAX_AGE
+from .languages import LANGUAGES, LANG_BY_CODE, DEFAULT_TARGET, lang_label
 from .settings import (
     UPLOAD_DIR, BASE_DIR, DAILY_PAGE_QUOTA, MAX_UPLOAD_MB, MAX_CONCURRENT_JOBS,
     server_keys_ready,
@@ -55,6 +56,8 @@ def _job_public(j):
         "id": j["id"],
         "filename": j["filename"],
         "pages": j["pages"],
+        "target_lang": j["target_lang"],
+        "target_label": lang_label(j["target_lang"]),
         "status": j["status"],
         "phase": j["phase"],
         "progress": j["progress"],
@@ -63,6 +66,11 @@ def _job_public(j):
         "has_output": bool(j["output_path"]),
         "created_at": j["created_at"],
     }
+
+
+@app.get("/api/languages")
+async def languages():
+    return {"languages": LANGUAGES, "default": DEFAULT_TARGET}
 
 
 # ---------------- 认证 ----------------
@@ -112,9 +120,12 @@ async def me(user=Depends(current_user)):
 
 # ---------------- 上传 / 翻译 ----------------
 @app.post("/api/upload")
-async def upload(file: UploadFile = File(...), user=Depends(current_user)):
+async def upload(file: UploadFile = File(...), target_lang: str = Form(DEFAULT_TARGET),
+                 user=Depends(current_user)):
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(400, "只接受 PDF 文件")
+    if target_lang not in LANG_BY_CODE:
+        target_lang = DEFAULT_TARGET
 
     data = await file.read()
     if len(data) > MAX_UPLOAD_MB * 1024 * 1024:
@@ -149,7 +160,7 @@ async def upload(file: UploadFile = File(...), user=Depends(current_user)):
             f"（每日上限 {DAILY_PAGE_QUOTA} 页）",
         )
     db.add_usage(user["id"], pages)
-    db.create_job(job_id, user["id"], safe_name, pages)
+    db.create_job(job_id, user["id"], safe_name, pages, target_lang)
     worker.submit_job(job_id, user["id"], pdf_path)
 
     return {"job_id": job_id, "pages": pages, **_user_public(user)}
@@ -180,5 +191,16 @@ async def download(job_id: str, user=Depends(current_user)):
                         filename=download_name)
 
 
-# ---------------- 静态前端 ----------------
-app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
+# ---------------- 页面 + 静态资源 ----------------
+@app.get("/")
+async def landing():
+    return FileResponse(os.path.join(STATIC_DIR, "landing.html"))
+
+
+@app.get("/app")
+async def app_page():
+    return FileResponse(os.path.join(STATIC_DIR, "app.html"))
+
+
+# 静态资源（css/js/图片）
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
