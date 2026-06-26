@@ -74,12 +74,18 @@ def translate_page(md_text, idx, config, log=print):
     return idx, md_text
 
 
-def translate_all_pages(en_pages, config, log=print):
+def translate_all_pages(en_pages, config, log=print, progress=None):
+    """逐页翻译。progress(done, total) 可选回调：每完成一页回报一次。"""
     zh_pages = {}
+    total = len(en_pages)
+    done = 0
     with ThreadPoolExecutor(max_workers=config.concurrent_translate) as ex:
         futures = [ex.submit(translate_page, md, idx, config, log)
                    for idx, md in en_pages.items()]
         for fut in as_completed(futures):
             idx, zh = fut.result()
             zh_pages[idx] = zh
+            done += 1
+            if progress:
+                progress(done, total)
     return zh_pages

@@ -38,15 +38,25 @@ def _run(job_id: str, user_id: int, pdf_path: str):
         db.update_job(job_id, message="\n".join(tail))
 
     try:
-        db.update_job(job_id, status="running", phase="ocr", message="解析 PDF 中…")
-        en_pages, page_images = ocr_pdf_async(pdf_path, config, tag="", log=log)
+        db.update_job(job_id, status="running", phase="ocr", progress=0, total=0,
+                      message="解析 PDF 中…")
+
+        def ocr_progress(extracted, total):
+            db.update_job(job_id, progress=extracted, total=total)
+
+        en_pages, page_images = ocr_pdf_async(pdf_path, config, tag="", log=log,
+                                              progress=ocr_progress)
         if not en_pages:
             raise RuntimeError("OCR 未返回结果")
 
         total = len(en_pages)
         db.update_job(job_id, phase="translate", total=total, progress=0,
                       message=f"OCR 完成 {total} 页，翻译中…")
-        zh_pages = translate_all_pages(en_pages, config, log=log)
+
+        def tr_progress(done, tot):
+            db.update_job(job_id, progress=done, total=tot)
+
+        zh_pages = translate_all_pages(en_pages, config, log=log, progress=tr_progress)
         db.update_job(job_id, progress=total, phase="render", message="渲染对照 PDF…")
 
         base = os.path.splitext(os.path.basename(pdf_path))[0]

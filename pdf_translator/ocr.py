@@ -53,8 +53,9 @@ def _download_image(url, retries=3):
     return None
 
 
-def ocr_pdf_async(pdf_path, config, tag="", log=print):
+def ocr_pdf_async(pdf_path, config, tag="", log=print, progress=None):
     """提交 PDF 为异步 job，轮询到 done。
+    progress(extracted, total) 可选回调：轮询时回报已解析页数 / 总页数。
     返回 (en_pages, page_images)：
       en_pages    = {page_idx: english_markdown}
       page_images = {page_idx: {"imgs/xxx.jpg": bytes}}
@@ -105,6 +106,8 @@ def ocr_pdf_async(pdf_path, config, tag="", log=print):
             return {}, {}
         elif state == "running":
             ep = d.get("extractProgress", {})
+            if progress:
+                progress(ep.get("extractedPages") or 0, ep.get("totalPages") or 0)
             log(f"  {tag}OCR 运行中 {ep.get('extractedPages')}/{ep.get('totalPages')}")
         time.sleep(config.poll_interval)
 

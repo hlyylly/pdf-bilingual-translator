@@ -270,17 +270,42 @@ async function handleFiles(files) {
 }
 
 // ---------- 任务列表 ----------
-const PHASE_TEXT = { ocr: "解析中", translate: "翻译中", render: "渲染中", done: "完成", failed: "失败" };
 const STATUS_TEXT = { queued: "排队中", running: "处理中", done: "已完成", failed: "失败" };
 
-function jobCard(j) {
-  let pct = 0;
-  if (j.status === "done") pct = 100;
-  else if (j.phase === "translate" && j.total) pct = Math.round((j.progress / j.total) * 80) + 10;
-  else if (j.phase === "ocr") pct = 6;
-  else if (j.phase === "render") pct = 92;
-  else if (j.status === "queued") pct = 2;
+// 组合各阶段为单调递增的总进度：解析 5-45%，翻译 46-95%，渲染 96%
+function pctOf(j) {
+  if (j.status === "done" || j.status === "failed") return 100;
+  if (j.status === "queued") return 3;
+  const f = j.total ? Math.min(1, j.progress / j.total) : 0;
+  if (j.phase === "ocr") return 5 + f * 40;
+  if (j.phase === "translate") return 46 + f * 49;
+  if (j.phase === "render") return 96;
+  return 5;
+}
 
+function statusLine(j) {
+  if (j.status === "failed") return j.message || "失败";
+  if (j.status === "done") return `完成 · 共 ${j.pages} 页`;
+  if (j.status === "queued") return "排队中，等待空闲…";
+  if (j.phase === "ocr") return j.total ? `正在解析 PDF ${j.progress}/${j.total} 页` : "正在解析 PDF…";
+  if (j.phase === "translate") return `正在翻译 ${j.progress}/${j.total} 页`;
+  if (j.phase === "render") return "正在生成双语对照 PDF…";
+  return "处理中…";
+}
+
+function elapsedText(j) {
+  if (j.status !== "running" && j.status !== "queued") return "";
+  const t = Date.parse(j.created_at);
+  if (!t) return "";
+  let s = Math.max(0, Math.floor((Date.now() - t) / 1000));
+  const m = Math.floor(s / 60);
+  return ` · 用时 ${m}:${String(s % 60).padStart(2, "0")}`;
+}
+
+function jobCard(j) {
+  const pct = pctOf(j);
+  const failed = j.status === "failed";
+  const active = j.status === "running" || j.status === "queued";
   const dl = j.status === "done" && j.has_output
     ? `<div class="job-actions"><a class="dl" href="/api/download/${j.id}">⬇ 下载双语 PDF</a></div>` : "";
   return `
@@ -290,8 +315,8 @@ function jobCard(j) {
           <small style="color:var(--sub)">· ${j.pages} 页 · 译为 ${escapeHtml(j.target_label || "")}</small></span>
         <span class="badge ${j.status}">${STATUS_TEXT[j.status] || j.status}</span>
       </div>
-      <div class="bar"><i style="width:${pct}%"></i></div>
-      <div class="job-msg">${escapeHtml(j.message || PHASE_TEXT[j.phase] || "")}</div>
+      <div class="bar ${active ? "live" : ""}"><i style="width:${pct}%"></i></div>
+      <div class="job-msg ${failed ? "err" : ""}">${escapeHtml(statusLine(j))}${failed ? "" : escapeHtml(elapsedText(j))}</div>
       ${dl}
     </div>`;
 }
@@ -310,7 +335,7 @@ async function refreshJobs() {
     box.innerHTML = data.jobs.map(jobCard).join("");
   }
   const active = data.jobs.some((j) => j.status === "queued" || j.status === "running");
-  if (active && !pollTimer) pollTimer = setInterval(refreshJobs, 2500);
+  if (active && !pollTimer) pollTimer = setInterval(refreshJobs, 2000);
   if (!active && pollTimer) { clearInterval(pollTimer); pollTimer = null; }
   // 顺带刷新额度
   try { renderUser(await api("/api/me")); } catch (_) {}
