@@ -51,6 +51,34 @@ $("#payClose").addEventListener("click", closePay);
 $("#payBack").addEventListener("click", openPay);
 $("#payModal").addEventListener("click", (e) => { if (e.target.id === "payModal") closePay(); });
 
+// 充值记录
+const ORDER_STATUS = { paid: "已支付", pending: "待支付", failed: "已关闭" };
+$("#ordersBtn").addEventListener("click", async () => {
+  const box = $("#ordersList");
+  box.innerHTML = "加载中…";
+  $("#ordersModal").classList.remove("hidden");
+  try {
+    const d = await api("/api/orders");
+    if (!d.orders.length) {
+      box.innerHTML = `<div class="empty">还没有充值记录。</div>`;
+      return;
+    }
+    box.innerHTML = d.orders
+      .map((o) => {
+        const t = (o.paid_at || o.created_at || "").replace("T", " ").slice(0, 16);
+        return `<div class="order-row">
+          <div><b>${o.pages} 页</b> · ¥${o.price}</div>
+          <div class="order-meta">${t} · <span class="os ${o.status}">${ORDER_STATUS[o.status] || o.status}</span></div>
+        </div>`;
+      })
+      .join("");
+  } catch (err) {
+    box.innerHTML = `<div class="empty">加载失败：${err.message}</div>`;
+  }
+});
+$("#ordersClose").addEventListener("click", () => $("#ordersModal").classList.add("hidden"));
+$("#ordersModal").addEventListener("click", (e) => { if (e.target.id === "ordersModal") $("#ordersModal").classList.add("hidden"); });
+
 // ---------- 充值（微信扫码） ----------
 let payPoll = null;
 
@@ -115,6 +143,19 @@ async function startPay(packIndex) {
       $("#payState").className = "pay-state err";
     }
   }, 2500);
+}
+
+// 落地页「立即购买」深链：/app?buy=N → 直接弹出该套餐支付码
+async function maybeAutoBuy() {
+  const buy = new URLSearchParams(location.search).get("buy");
+  if (buy === null) return;
+  history.replaceState(null, "", "/app");
+  const d = await api("/api/packs").catch(() => null);
+  if (!d || !d.pay_enabled) return;
+  const n = Number(buy);
+  if (!Number.isInteger(n) || n < 0 || n >= d.packs.length) return;
+  $("#payModal").classList.remove("hidden");
+  startPay(n);
 }
 
 // ---------- 用户/额度 ----------
@@ -238,6 +279,7 @@ async function boot() {
     $("#appView").classList.remove("hidden");
     $("#userbar").classList.remove("hidden");
     refreshJobs();
+    maybeAutoBuy();
   } catch (_) {
     $("#authView").classList.remove("hidden");
     $("#appView").classList.add("hidden");

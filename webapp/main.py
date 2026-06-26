@@ -141,6 +141,17 @@ async def pay_status(out_trade_no: str, user=Depends(current_user)):
             "pages": order["pages"], **_user_public(user)}
 
 
+@app.get("/api/orders")
+async def orders(user=Depends(current_user)):
+    rows = db.list_orders(user["id"])
+    return {"orders": [
+        {"out_trade_no": o["out_trade_no"], "pages": o["pages"],
+         "price": round(o["amount_fen"] / 100, 2), "status": o["status"],
+         "paid_at": o["paid_at"], "created_at": o["created_at"]}
+        for o in rows
+    ]}
+
+
 @app.post("/api/pay/notify")
 async def pay_notify(request: Request):
     result = wechatpay.decode_callback(dict(request.headers), await request.body())

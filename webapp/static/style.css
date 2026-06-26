@@ -126,6 +126,17 @@ button.primary:disabled { opacity: .6; cursor: default; }
 .pay-state.ok { color: var(--ok); font-weight: 600; }
 .pay-state.err { color: var(--err); }
 
+/* 充值记录 */
+.orders-list { display: flex; flex-direction: column; gap: 2px; max-height: 60vh; overflow: auto; }
+.order-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 4px; border-bottom: 1px solid var(--line); font-size: 14px;
+}
+.order-meta { color: var(--sub); font-size: 12.5px; }
+.os.paid { color: var(--ok); }
+.os.pending { color: var(--warn); }
+.os.failed { color: var(--sub); }
+
 .msg { font-size: 13.5px; min-height: 18px; }
 .msg.err { color: var(--err); }
 .msg.ok { color: var(--ok); }
