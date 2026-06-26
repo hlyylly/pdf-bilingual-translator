@@ -15,8 +15,8 @@ from . import db, auth, worker, wechatpay
 from .auth import current_user, COOKIE_NAME, make_token, MAX_AGE
 from .languages import LANGUAGES, LANG_BY_CODE, DEFAULT_TARGET, lang_label
 from .settings import (
-    UPLOAD_DIR, BASE_DIR, FREE_DAILY_PAGES, PAGE_PACKS, MAX_UPLOAD_MB,
-    MAX_CONCURRENT_JOBS, server_keys_ready, wechat_pay_ready,
+    UPLOAD_DIR, BASE_DIR, FREE_DAILY_PAGES, PAGE_PACKS, REFERRAL_BONUS,
+    MAX_UPLOAD_MB, MAX_CONCURRENT_JOBS, server_keys_ready, wechat_pay_ready,
 )
 
 app = FastAPI(title="PDF 双语翻译器", docs_url=None, redoc_url=None)
@@ -141,6 +141,18 @@ async def pay_status(out_trade_no: str, user=Depends(current_user)):
             "pages": order["pages"], **_user_public(user)}
 
 
+@app.get("/api/referral")
+async def referral(user=Depends(current_user)):
+    invited, rewarded = db.referral_stats(user["id"])
+    return {
+        "code": user["referral_code"],
+        "bonus": REFERRAL_BONUS,
+        "invited": invited,
+        "rewarded": rewarded,
+        "earned": rewarded * REFERRAL_BONUS,
+    }
+
+
 @app.get("/api/orders")
 async def orders(user=Depends(current_user)):
     rows = db.list_orders(user["id"])
@@ -173,13 +185,19 @@ async def pay_notify(request: Request):
 
 # ---------------- 认证 ----------------
 @app.post("/api/register")
-async def register(username: str = Form(...), password: str = Form(...)):
+async def register(username: str = Form(...), password: str = Form(...),
+                   ref: str = Form("")):
     username = username.strip()
     if not _USERNAME_RE.match(username):
         raise HTTPException(400, "用户名需为 3-20 位字母/数字/下划线")
     if len(password) < 6:
         raise HTTPException(400, "密码至少 6 位")
-    uid = db.create_user(username, password)
+    referred_by = None
+    if ref.strip():
+        referrer = db.get_user_by_referral_code(ref.strip().upper())
+        if referrer:
+            referred_by = referrer["id"]
+    uid = db.create_user(username, password, referred_by=referred_by)
     if uid is None:
         raise HTTPException(409, "用户名已存在")
     resp = JSONResponse({"ok": True})

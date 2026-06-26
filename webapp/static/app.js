@@ -3,6 +3,12 @@ const $ = (s) => document.querySelector(s);
 let authMode = "login";
 let pollTimer = null;
 
+// 捕获邀请码（好友点邀请链接 /app?ref=CODE 进来）
+(function captureRef() {
+  const ref = new URLSearchParams(location.search).get("ref");
+  if (ref) localStorage.setItem("ref", ref.toUpperCase());
+})();
+
 async function api(path, opts = {}) {
   const res = await fetch(path, opts);
   let data = null;
@@ -26,12 +32,16 @@ $("#authForm").addEventListener("submit", async (e) => {
   const fd = new FormData();
   fd.append("username", $("#f-username").value.trim());
   fd.append("password", $("#f-password").value);
+  if (authMode === "register" && localStorage.getItem("ref")) {
+    fd.append("ref", localStorage.getItem("ref"));
+  }
   const btn = $("#authSubmit");
   btn.disabled = true;
   $("#authMsg").className = "msg";
   $("#authMsg").textContent = "处理中…";
   try {
     await api(`/api/${authMode}`, { method: "POST", body: fd });
+    if (authMode === "register") localStorage.removeItem("ref");
     await boot();
   } catch (err) {
     $("#authMsg").className = "msg err";
@@ -78,6 +88,11 @@ $("#ordersBtn").addEventListener("click", async () => {
 });
 $("#ordersClose").addEventListener("click", () => $("#ordersModal").classList.add("hidden"));
 $("#ordersModal").addEventListener("click", (e) => { if (e.target.id === "ordersModal") $("#ordersModal").classList.add("hidden"); });
+
+// 邀请有礼
+$("#refBtn").addEventListener("click", openReferral);
+$("#refClose").addEventListener("click", () => $("#refModal").classList.add("hidden"));
+$("#refModal").addEventListener("click", (e) => { if (e.target.id === "refModal") $("#refModal").classList.add("hidden"); });
 
 // ---------- 充值（微信扫码） ----------
 let payPoll = null;
@@ -156,6 +171,38 @@ async function maybeAutoBuy() {
   if (!Number.isInteger(n) || n < 0 || n >= d.packs.length) return;
   $("#payModal").classList.remove("hidden");
   startPay(n);
+}
+
+// ---------- 邀请有礼 ----------
+async function openReferral() {
+  $("#refModal").classList.remove("hidden");
+  const body = $("#refBody");
+  body.innerHTML = "加载中…";
+  try {
+    const d = await api("/api/referral");
+    const link = `${location.origin}/app?ref=${d.code}`;
+    body.innerHTML = `
+      <p class="ref-rule">把你的专属链接发给好友，<b>好友注册并完成首次充值</b>，你立得 <b class="hl">${d.bonus} 页</b>，多邀多得，上不封顶。</p>
+      <div class="ref-linkbox">
+        <input id="refLink" type="text" readonly value="${link}" />
+        <button id="refCopy" class="btn-copy">复制</button>
+      </div>
+      <div class="ref-stats">
+        <div><b>${d.invited}</b><span>已邀请</span></div>
+        <div><b>${d.rewarded}</b><span>已充值</span></div>
+        <div><b>${d.earned}</b><span>累计得页</span></div>
+      </div>
+      <p class="ref-tip">小贴士：发到科研群、同学群、朋友圈，论文翻译刚需，转化率高。</p>`;
+    $("#refCopy").addEventListener("click", () => {
+      const inp = $("#refLink");
+      inp.select();
+      navigator.clipboard?.writeText(inp.value);
+      $("#refCopy").textContent = "已复制";
+      setTimeout(() => ($("#refCopy").textContent = "复制"), 1500);
+    });
+  } catch (err) {
+    body.innerHTML = `<div class="empty">加载失败：${err.message}</div>`;
+  }
 }
 
 // ---------- 用户/额度 ----------
@@ -284,6 +331,11 @@ async function boot() {
     $("#authView").classList.remove("hidden");
     $("#appView").classList.add("hidden");
     $("#userbar").classList.add("hidden");
+    // 受邀进来：显示提示并默认切到注册
+    if (localStorage.getItem("ref")) {
+      $("#refHint").classList.remove("hidden");
+      document.querySelector('.tab[data-tab="register"]')?.click();
+    }
   }
 }
 boot();

@@ -164,6 +164,16 @@ h2 { font-size: 34px; font-weight: 800; letter-spacing: -.5px; }
 .plan-btn { width: 100%; justify-content: center; }
 .price-note { color: var(--sub); font-size: 13px; margin-top: 26px; }
 
+/* 邀请有礼 */
+.invite-band {
+  background: linear-gradient(120deg, #fff7ed, #fef3c7);
+  border: 1px solid #fed7aa; border-radius: 22px; padding: 44px 28px;
+}
+.invite-emoji { font-size: 40px; margin-bottom: 8px; }
+.invite-band h2 { color: #9a3412; }
+.invite-band .section-sub { color: #b45309; margin-bottom: 28px; }
+.invite-band .section-sub strong { color: #9a3412; }
+
 /* 结尾 CTA */
 .cta-band {
   text-align: center; padding: 80px 24px;

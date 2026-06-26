@@ -11,6 +11,7 @@
     <a class="brand" href="/">📑 DualPDF <span class="brand-zh">对照译</span></a>
     <div id="userbar" class="userbar hidden">
       <span id="quota" class="quota"></span>
+      <button id="refBtn" class="link invite">🎁 邀请有礼</button>
       <button id="ordersBtn" class="link">充值记录</button>
       <span id="username" class="who"></span>
       <button id="logout" class="link">退出</button>
@@ -19,6 +20,7 @@
 
   <!-- 登录 / 注册 -->
   <section id="authView" class="card auth hidden">
+    <div id="refHint" class="ref-hint hidden">🎁 好友邀请你加入 DualPDF，注册即享每天 50 页免费翻译</div>
     <div class="tabs">
       <button class="tab active" data-tab="login">登录</button>
       <button class="tab" data-tab="register">注册</button>
@@ -55,6 +57,15 @@
       <div id="jobs" class="jobs"><div class="empty">还没有任务，上传一个 PDF 试试。</div></div>
     </section>
   </main>
+
+  <!-- 邀请有礼弹窗 -->
+  <div id="refModal" class="modal hidden">
+    <div class="modal-box">
+      <button id="refClose" class="modal-close">×</button>
+      <h3>🎁 邀请有礼</h3>
+      <div id="refBody"></div>
+    </div>
+  </div>
 
   <!-- 充值记录弹窗 -->
   <div id="ordersModal" class="modal hidden">

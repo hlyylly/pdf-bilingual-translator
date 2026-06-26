@@ -6,9 +6,11 @@ import hashlib
 import secrets
 from datetime import datetime, timezone
 
-from .settings import DB_PATH
+from .settings import DB_PATH, REFERRAL_BONUS
 
 _write_lock = threading.Lock()
+# 邀请码字母表（去掉易混淆的 0/O/1/I/l）
+_REF_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 
 
 def _conn():
@@ -28,6 +30,9 @@ def init_db():
                 username      TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
                 credits       INTEGER NOT NULL DEFAULT 0,
+                referral_code TEXT UNIQUE,
+                referred_by   INTEGER,
+                referral_rewarded INTEGER NOT NULL DEFAULT 0,
                 created_at    TEXT NOT NULL
             );
             CREATE TABLE IF NOT EXISTS usage (
@@ -81,6 +86,16 @@ def init_db():
         ucols = {r["name"] for r in c.execute("PRAGMA table_info(users)").fetchall()}
         if "credits" not in ucols:
             c.execute("ALTER TABLE users ADD COLUMN credits INTEGER NOT NULL DEFAULT 0")
+        if "referral_code" not in ucols:
+            c.execute("ALTER TABLE users ADD COLUMN referral_code TEXT")
+        if "referred_by" not in ucols:
+            c.execute("ALTER TABLE users ADD COLUMN referred_by INTEGER")
+        if "referral_rewarded" not in ucols:
+            c.execute("ALTER TABLE users ADD COLUMN referral_rewarded INTEGER NOT NULL DEFAULT 0")
+        # 给历史用户补邀请码
+        for r in c.execute("SELECT id FROM users WHERE referral_code IS NULL").fetchall():
+            c.execute("UPDATE users SET referral_code=? WHERE id=?",
+                      (_gen_unique_ref_code(c), r["id"]))
 
 
 # ---------- 密码哈希（stdlib pbkdf2，无需编译依赖） ----------
@@ -108,16 +123,44 @@ def today():
 
 
 # ---------- 用户 ----------
-def create_user(username: str, password: str):
+def _gen_unique_ref_code(c, length=6):
+    """在给定连接上生成不冲突的邀请码。"""
+    while True:
+        code = "".join(secrets.choice(_REF_ALPHABET) for _ in range(length))
+        if not c.execute("SELECT 1 FROM users WHERE referral_code=?", (code,)).fetchone():
+            return code
+
+
+def create_user(username: str, password: str, referred_by=None):
     with _write_lock, _conn() as c:
         try:
+            code = _gen_unique_ref_code(c)
             cur = c.execute(
-                "INSERT INTO users(username, password_hash, created_at) VALUES (?,?,?)",
-                (username, hash_password(password), _now()),
+                "INSERT INTO users(username, password_hash, referral_code, referred_by, created_at) "
+                "VALUES (?,?,?,?,?)",
+                (username, hash_password(password), code, referred_by, _now()),
             )
             return cur.lastrowid
         except sqlite3.IntegrityError:
             return None
+
+
+def get_user_by_referral_code(code: str):
+    if not code:
+        return None
+    with _conn() as c:
+        return c.execute("SELECT * FROM users WHERE referral_code=?", (code,)).fetchone()
+
+
+def referral_stats(user_id: int):
+    """返回 (邀请注册人数, 已奖励人数)。"""
+    with _conn() as c:
+        invited = c.execute("SELECT COUNT(*) n FROM users WHERE referred_by=?",
+                            (user_id,)).fetchone()["n"]
+        rewarded = c.execute(
+            "SELECT COUNT(*) n FROM users WHERE referred_by=? AND referral_rewarded=1",
+            (user_id,)).fetchone()["n"]
+        return invited, rewarded
 
 
 def get_user_by_name(username: str):
@@ -237,8 +280,15 @@ def mark_order_paid(out_trade_no, wx_trade_no=None):
             return False  # 已处理过或不存在
         row = c.execute("SELECT user_id, pages FROM orders WHERE out_trade_no=?",
                         (out_trade_no,)).fetchone()
-        c.execute("UPDATE users SET credits = credits + ? WHERE id=?",
-                  (row["pages"], row["user_id"]))
+        uid = row["user_id"]
+        c.execute("UPDATE users SET credits = credits + ? WHERE id=?", (row["pages"], uid))
+        # 邀请有礼：被推荐人首次完成充值 → 奖励推荐人，每位好友仅一次
+        u = c.execute("SELECT referred_by, referral_rewarded FROM users WHERE id=?",
+                      (uid,)).fetchone()
+        if u and u["referred_by"] and not u["referral_rewarded"]:
+            c.execute("UPDATE users SET credits = credits + ? WHERE id=?",
+                      (REFERRAL_BONUS, u["referred_by"]))
+            c.execute("UPDATE users SET referral_rewarded=1 WHERE id=?", (uid,))
         return True
 
 
