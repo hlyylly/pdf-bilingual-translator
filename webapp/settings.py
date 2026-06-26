@@ -30,7 +30,7 @@ def _load_server_config():
         "paddle_token": "PADDLE_TOKEN",
         "deepseek_model": "DEEPSEEK_MODEL",
         "secret_key": "APP_SECRET_KEY",
-        "daily_page_quota": "DAILY_PAGE_QUOTA",
+        "free_daily_pages": "FREE_DAILY_PAGES",
         "max_concurrent_jobs": "MAX_CONCURRENT_JOBS",
         "max_upload_mb": "MAX_UPLOAD_MB",
     }
@@ -43,9 +43,16 @@ def _load_server_config():
 _cfg = _load_server_config()
 
 # ---- 业务参数 ----
-DAILY_PAGE_QUOTA = int(_cfg.get("daily_page_quota", 300))
+# 免费版每日额度（每天 0 点 UTC 重置）；付费为一次性页数包，进账户余额、永久有效
+FREE_DAILY_PAGES = int(_cfg.get("free_daily_pages", 50))
 MAX_CONCURRENT_JOBS = int(_cfg.get("max_concurrent_jobs", 2))
 MAX_UPLOAD_MB = int(_cfg.get("max_upload_mb", 50))
+
+# 页数包（落地页展示 + 充值校验）。price 单位：元
+PAGE_PACKS = _cfg.get("page_packs") or [
+    {"pages": 300, "price": 9.9},
+    {"pages": 1000, "price": 19.9},
+]
 
 # 会话签名密钥：未配置则生成一次性密钥（重启会使现有登录失效，生产请固定它）
 SECRET_KEY = _cfg.get("secret_key") or secrets.token_hex(32)

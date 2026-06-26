@@ -1,6 +1,6 @@
 # 网页版部署指南（服务器 39.105.206.76）
 
-FastAPI 后端 + 原生前端，复用核心 `pdf_translator` 包。用户注册账号 → 上传 PDF → 后台 OCR+翻译+渲染 → 下载双语对照 PDF。**密钥由服务端统一提供，每账号每天 300 页额度。**
+FastAPI 后端 + 原生前端，复用核心 `pdf_translator` 包。用户注册账号 → 上传 PDF → 后台 OCR+翻译+渲染 → 下载双语对照 PDF。**密钥由服务端统一提供。额度：每账号每天 50 页免费 + 可购买页数包（充值进余额、永久有效）。**
 
 ## 一、上传代码到服务器
 
@@ -41,7 +41,7 @@ python -c "import secrets;print(secrets.token_hex(32))"
 export DEEPSEEK_API_KEY=sk-xxxx
 export PADDLE_TOKEN=xxxx
 export APP_SECRET_KEY=固定的随机串
-export DAILY_PAGE_QUOTA=300        # 可选，默认 300
+export FREE_DAILY_PAGES=50         # 可选，免费版每日额度，默认 50
 export MAX_CONCURRENT_JOBS=2       # 可选，全局同时翻译的任务数，保护 API 额度
 export MAX_UPLOAD_MB=50            # 可选
 ```
@@ -90,6 +90,7 @@ location / {
   - `outputs/` —— 生成的双语 PDF，提供下载（不会自动清理，需定期清）
 - **清理旧结果**（例如保留 7 天）：可加一条定时任务
   `find /www/wwwroot/pdf-translator/webapp/data/outputs -type f -mtime +7 -delete`
-- **额度按 UTC 自然日重置**，每账号每天 `DAILY_PAGE_QUOTA` 页，按 PDF 页数计，提交时预扣、失败自动退还。
+- **额度模型**：每账号每天 `FREE_DAILY_PAGES` 页免费（按 UTC 自然日重置）+ 页数包余额（充值进 `users.credits`，永久有效）。扣费先扣当日免费、不足再扣余额；提交时预扣、失败自动退还。
+- **手动充值**（在线支付接入前）：`python -m webapp.grant_credits <用户名> <页数>`，例 `python -m webapp.grant_credits alice 1000`。不带页数则查询余额。
 - **进程重启**：内存中的后台任务会丢失，启动时会把残留的 queued/running 任务标记为失败，用户重新上传即可。
 - **多 worker**：默认单 worker（翻译跑在后台线程足够）。若要多 worker，SQLite 已开 WAL 可共享，但每个 worker 有独立线程池，`MAX_CONCURRENT_JOBS` 会按 worker 数翻倍，注意 API 额度。

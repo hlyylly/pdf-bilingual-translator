@@ -37,7 +37,7 @@ python gui.py
 
 ## 🌐 网页版（多用户，服务端统一密钥）
 
-FastAPI 后端 + 原生前端：用户注册账号 → 上传 PDF → 后台翻译 → 下载双语对照 PDF。密钥由服务端统一提供，每账号每天有页数额度（默认 300 页/天）。
+FastAPI 后端 + 原生前端：用户注册账号 → 上传 PDF → 后台翻译 → 下载双语对照 PDF。密钥由服务端统一提供。额度模型：每账号每天 50 页免费，不够用购买页数包（充值进余额、永久有效，扣费先扣免费再扣余额）。手动充值：`python -m webapp.grant_credits <用户名> <页数>`。
 
 ```bash
 pip install -r requirements-web.txt

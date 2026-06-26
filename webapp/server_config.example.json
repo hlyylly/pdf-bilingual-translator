@@ -3,7 +3,11 @@
   "paddle_token": "你的飞桨aistudio_token",
   "deepseek_model": "deepseek-chat",
   "secret_key": "用 python -c \"import secrets;print(secrets.token_hex(32))\" 生成并固定，否则重启后登录失效",
-  "daily_page_quota": 300,
+  "free_daily_pages": 50,
+  "page_packs": [
+    {"pages": 300, "price": 9.9},
+    {"pages": 1000, "price": 19.9}
+  ],
   "max_concurrent_jobs": 2,
   "max_upload_mb": 50
 }

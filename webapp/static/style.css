@@ -30,6 +30,8 @@ header {
 .lang-hint { font-size: 12.5px; color: var(--sub); }
 .userbar { display: flex; align-items: center; gap: 14px; font-size: 14px; }
 .quota { color: var(--sub); }
+.quota b { color: var(--ink); font-weight: 700; }
+.quota .buy { color: var(--brand); margin-left: 6px; font-size: 13px; }
 .who { font-weight: 600; }
 .link { background: none; border: none; color: var(--brand); cursor: pointer; font-size: 14px; }
 

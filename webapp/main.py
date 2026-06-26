@@ -12,8 +12,8 @@ from . import db, auth, worker
 from .auth import current_user, COOKIE_NAME, make_token, MAX_AGE
 from .languages import LANGUAGES, LANG_BY_CODE, DEFAULT_TARGET, lang_label
 from .settings import (
-    UPLOAD_DIR, BASE_DIR, DAILY_PAGE_QUOTA, MAX_UPLOAD_MB, MAX_CONCURRENT_JOBS,
-    server_keys_ready,
+    UPLOAD_DIR, BASE_DIR, FREE_DAILY_PAGES, PAGE_PACKS, MAX_UPLOAD_MB,
+    MAX_CONCURRENT_JOBS, server_keys_ready,
 )
 
 app = FastAPI(title="PDF 双语翻译器", docs_url=None, redoc_url=None)
@@ -42,11 +42,14 @@ def _safe_print(msg: str):
 
 def _user_public(user):
     used = db.pages_used_today(user["id"])
+    credits = db.get_credits(user["id"])
     return {
         "username": user["username"],
-        "quota": DAILY_PAGE_QUOTA,
-        "used_today": used,
-        "remaining_today": max(0, DAILY_PAGE_QUOTA - used),
+        "free_daily": FREE_DAILY_PAGES,
+        "free_used_today": used,
+        "free_remaining_today": max(0, FREE_DAILY_PAGES - used),
+        "credits": credits,
+        "available": max(0, FREE_DAILY_PAGES - used) + credits,
         "max_upload_mb": MAX_UPLOAD_MB,
     }
 
@@ -71,6 +74,11 @@ def _job_public(j):
 @app.get("/api/languages")
 async def languages():
     return {"languages": LANGUAGES, "default": DEFAULT_TARGET}
+
+
+@app.get("/api/packs")
+async def packs():
+    return {"free_daily": FREE_DAILY_PAGES, "packs": PAGE_PACKS}
 
 
 # ---------------- 认证 ----------------
@@ -149,18 +157,27 @@ async def upload(file: UploadFile = File(...), target_lang: str = Form(DEFAULT_T
         os.remove(pdf_path)
         raise HTTPException(400, "PDF 没有页面")
 
-    # 额度校验 + 预扣
-    used = db.pages_used_today(user["id"])
-    remaining = DAILY_PAGE_QUOTA - used
-    if pages > remaining:
+    # 额度校验 + 预扣：先扣每日免费额度，不足再扣页数包余额
+    free_used = db.pages_used_today(user["id"])
+    free_remaining = max(0, FREE_DAILY_PAGES - free_used)
+    credits = db.get_credits(user["id"])
+    available = free_remaining + credits
+    if pages > available:
         os.remove(pdf_path)
         raise HTTPException(
             429,
-            f"今日额度不足：本文件 {pages} 页，剩余 {max(0, remaining)} 页"
-            f"（每日上限 {DAILY_PAGE_QUOTA} 页）",
+            f"额度不足：本文件 {pages} 页，可用 {available} 页"
+            f"（今日免费剩 {free_remaining} 页 + 页数包余额 {credits} 页）。"
+            f"请购买页数包后再试。",
         )
-    db.add_usage(user["id"], pages)
-    db.create_job(job_id, user["id"], safe_name, pages, target_lang)
+    use_free = min(pages, free_remaining)
+    use_credits = pages - use_free
+    if use_free:
+        db.add_usage(user["id"], use_free)
+    if use_credits:
+        db.add_credits(user["id"], -use_credits)
+    db.create_job(job_id, user["id"], safe_name, pages, target_lang,
+                  used_free=use_free, used_credits=use_credits)
     worker.submit_job(job_id, user["id"], pdf_path)
 
     return {"job_id": job_id, "pages": pages, **_user_public(user)}

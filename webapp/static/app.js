@@ -49,7 +49,10 @@ $("#logout").addEventListener("click", async () => {
 // ---------- 用户/额度 ----------
 function renderUser(u) {
   $("#username").textContent = u.username;
-  $("#quota").textContent = `今日额度 ${u.used_today} / ${u.quota} 页`;
+  $("#quota").innerHTML =
+    `今日免费 <b>${u.free_remaining_today}</b>/${u.free_daily} 页` +
+    ` · 页数包余额 <b>${u.credits}</b> 页` +
+    ` <a class="buy" href="/#pricing" target="_blank">充值</a>`;
   if (u.max_upload_mb) $("#maxmb").textContent = u.max_upload_mb;
 }
 

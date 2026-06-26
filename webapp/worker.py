@@ -24,7 +24,8 @@ def submit_job(job_id: str, user_id: int, pdf_path: str):
 def _run(job_id: str, user_id: int, pdf_path: str):
     config = build_translator_config()
     job = db.get_job(job_id)
-    reserved_pages = job["pages"] if job else 0
+    used_free = job["used_free"] if job else 0
+    used_credits = job["used_credits"] if job else 0
     config.target_lang = lang_en(job["target_lang"] if job else "zh-Hans")
     tail = []  # 最近日志行
 
@@ -55,9 +56,11 @@ def _run(job_id: str, user_id: int, pdf_path: str):
         db.update_job(job_id, status="done", phase="done", progress=total,
                       output_path=out_path, message="完成")
     except Exception as e:
-        # 失败：回滚预扣额度
-        if reserved_pages:
-            db.add_usage(user_id, -reserved_pages)
+        # 失败：回滚预扣（免费额度 + 页数包余额各自退回）
+        if used_free:
+            db.add_usage(user_id, -used_free)
+        if used_credits:
+            db.add_credits(user_id, used_credits)
         db.update_job(job_id, status="failed", phase="failed",
                       message=f"失败：{str(e)[:200]}")
         traceback.print_exc()

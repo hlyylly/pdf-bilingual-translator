@@ -27,6 +27,7 @@ def init_db():
                 id            INTEGER PRIMARY KEY AUTOINCREMENT,
                 username      TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
+                credits       INTEGER NOT NULL DEFAULT 0,
                 created_at    TEXT NOT NULL
             );
             CREATE TABLE IF NOT EXISTS usage (
@@ -41,6 +42,8 @@ def init_db():
                 user_id     INTEGER NOT NULL,
                 filename    TEXT NOT NULL,
                 pages       INTEGER NOT NULL DEFAULT 0,
+                used_free   INTEGER NOT NULL DEFAULT 0,
+                used_credits INTEGER NOT NULL DEFAULT 0,
                 target_lang TEXT NOT NULL DEFAULT 'zh-Hans',
                 status      TEXT NOT NULL,
                 phase       TEXT NOT NULL DEFAULT '',
@@ -56,9 +59,16 @@ def init_db():
             """
         )
         # 兼容旧库：补列
-        cols = {r["name"] for r in c.execute("PRAGMA table_info(jobs)").fetchall()}
-        if "target_lang" not in cols:
+        jcols = {r["name"] for r in c.execute("PRAGMA table_info(jobs)").fetchall()}
+        if "target_lang" not in jcols:
             c.execute("ALTER TABLE jobs ADD COLUMN target_lang TEXT NOT NULL DEFAULT 'zh-Hans'")
+        if "used_free" not in jcols:
+            c.execute("ALTER TABLE jobs ADD COLUMN used_free INTEGER NOT NULL DEFAULT 0")
+        if "used_credits" not in jcols:
+            c.execute("ALTER TABLE jobs ADD COLUMN used_credits INTEGER NOT NULL DEFAULT 0")
+        ucols = {r["name"] for r in c.execute("PRAGMA table_info(users)").fetchall()}
+        if "credits" not in ucols:
+            c.execute("ALTER TABLE users ADD COLUMN credits INTEGER NOT NULL DEFAULT 0")
 
 
 # ---------- 密码哈希（stdlib pbkdf2，无需编译依赖） ----------
@@ -118,7 +128,7 @@ def pages_used_today(user_id: int) -> int:
 
 
 def add_usage(user_id: int, pages: int):
-    """增减今日已用页数（pages 可为负数用于回滚）。"""
+    """增减今日已用免费页数（pages 可为负数用于回滚）。"""
     with _write_lock, _conn() as c:
         c.execute(
             """INSERT INTO usage(user_id, day, pages) VALUES(?,?,?)
@@ -127,13 +137,31 @@ def add_usage(user_id: int, pages: int):
         )
 
 
+def get_credits(user_id: int) -> int:
+    with _conn() as c:
+        row = c.execute("SELECT credits FROM users WHERE id=?", (user_id,)).fetchone()
+        return row["credits"] if row else 0
+
+
+def add_credits(user_id: int, pages: int) -> int:
+    """增减页数包余额（充值为正、消耗/退款为负），返回更新后的余额。不会扣成负数。"""
+    with _write_lock, _conn() as c:
+        c.execute("UPDATE users SET credits = MAX(0, credits + ?) WHERE id=?",
+                  (pages, user_id))
+        row = c.execute("SELECT credits FROM users WHERE id=?", (user_id,)).fetchone()
+        return row["credits"] if row else 0
+
+
 # ---------- 任务 ----------
-def create_job(job_id, user_id, filename, pages, target_lang="zh-Hans"):
+def create_job(job_id, user_id, filename, pages, target_lang="zh-Hans",
+               used_free=0, used_credits=0):
     with _write_lock, _conn() as c:
         c.execute(
-            """INSERT INTO jobs(id,user_id,filename,pages,target_lang,status,total,created_at,updated_at)
-               VALUES(?,?,?,?,?,?,?,?,?)""",
-            (job_id, user_id, filename, pages, target_lang, "queued", pages, _now(), _now()),
+            """INSERT INTO jobs(id,user_id,filename,pages,used_free,used_credits,
+                                target_lang,status,total,created_at,updated_at)
+               VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+            (job_id, user_id, filename, pages, used_free, used_credits,
+             target_lang, "queued", pages, _now(), _now()),
         )
 
 
