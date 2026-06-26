@@ -1,10 +1,14 @@
 const $ = (s) => document.querySelector(s);
 
-async function api(path) {
-  const r = await fetch(path);
+async function api(path, opts) {
+  const r = await fetch(path, opts);
   if (r.status === 401) throw { code: 401 };
   if (r.status === 403) throw { code: 403 };
-  if (!r.ok) throw { code: r.status };
+  if (!r.ok) {
+    let detail = r.status;
+    try { detail = (await r.json()).detail || detail; } catch (_) {}
+    throw { code: r.status, message: detail };
+  }
   return r.json();
 }
 
@@ -56,6 +60,72 @@ async function load() {
   }
 }
 
-$("#refresh").addEventListener("click", load);
+// ---------- 卡密管理 ----------
+function showCodes(codes, msg) {
+  $("#cdkResult").classList.remove("hidden");
+  $("#cdkResultMsg").textContent = msg;
+  $("#cdkCodes").value = codes.join("\n");
+}
+
+async function loadBatches() {
+  try {
+    const d = await api("/api/admin/cdkeys");
+    $("#cdkBatches").innerHTML = d.batches.length
+      ? d.batches.map((b) => `<tr>
+          <td>${b.batch}</td><td>${b.pages} 页</td><td>${b.total}</td>
+          <td>${b.used}</td><td><b>${b.left}</b></td>
+          <td>${b.left ? `<button class="link" data-batch="${encodeURIComponent(b.batch)}" data-pages="${b.pages}">导出未用</button>` : "—"}</td>
+        </tr>`).join("")
+      : `<tr><td colspan="6" style="color:var(--sub)">还没有卡密，用上方表单生成。</td></tr>`;
+    $("#cdkBatches").querySelectorAll("button[data-batch]").forEach((btn) =>
+      btn.addEventListener("click", async () => {
+        const batch = decodeURIComponent(btn.dataset.batch);
+        const r = await api(`/api/admin/cdkeys/export?batch=${encodeURIComponent(batch)}&pages=${btn.dataset.pages}`);
+        showCodes(r.codes, `批次「${batch}」剩余 ${r.codes.length} 个未用卡密`);
+      })
+    );
+  } catch (_) {}
+}
+
+$("#cdkGen").addEventListener("click", async () => {
+  const pages = +$("#cdkPages").value;
+  const count = +$("#cdkCount").value;
+  const batch = $("#cdkBatch").value.trim();
+  $("#cdkGen").disabled = true;
+  $("#cdkGen").textContent = "生成中…";
+  try {
+    const fd = new FormData();
+    fd.append("pages", pages); fd.append("count", count); fd.append("batch", batch);
+    const r = await api("/api/admin/cdkeys/generate", { method: "POST", body: fd });
+    showCodes(r.codes, `已生成 ${r.count} 个 · 每个 ${r.pages} 页${r.batch ? " · 批次 " + r.batch : ""}`);
+    loadBatches();
+    load();
+  } catch (e) {
+    alert("生成失败：" + (e.message || e.code));
+  } finally {
+    $("#cdkGen").disabled = false;
+    $("#cdkGen").textContent = "生成卡密";
+  }
+});
+
+$("#cdkCopy").addEventListener("click", () => {
+  const ta = $("#cdkCodes");
+  ta.select();
+  navigator.clipboard?.writeText(ta.value);
+  $("#cdkCopy").textContent = "已复制";
+  setTimeout(() => ($("#cdkCopy").textContent = "复制全部"), 1500);
+});
+
+$("#cdkDownload").addEventListener("click", () => {
+  const blob = new Blob([$("#cdkCodes").value], { type: "text/plain" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "dualpdf-cdkeys.txt";
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+$("#refresh").addEventListener("click", () => { load(); loadBatches(); });
 load();
+loadBatches();
 setInterval(load, 30000);

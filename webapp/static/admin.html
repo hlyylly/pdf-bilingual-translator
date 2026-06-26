@@ -25,6 +25,17 @@
     .tag.failed { background: #f1f3f9; color: var(--sub); }
     .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
     .gate { max-width: 380px; margin: 12vh auto; text-align: center; }
+    .cdk-gen { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+    .cdk-gen label { display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: var(--sub); }
+    .cdk-gen input { padding: 9px 11px; border: 1px solid var(--line); border-radius: 9px; font-size: 14px; width: 150px; }
+    .cdk-gen input:focus { border-color: var(--brand); outline: none; }
+    .btn-copy { padding: 10px 20px; background: var(--brand); color: #fff; border: none; border-radius: 9px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .btn-copy:hover { background: var(--brand-d); }
+    .cdk-result { margin-top: 16px; }
+    .cdk-result-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 13px; color: var(--ok); }
+    .cdk-result-head .link { margin-left: 12px; }
+    #cdkCodes { width: 100%; font-family: monospace; font-size: 13px; border: 1px solid var(--line); border-radius: 10px; padding: 10px; resize: vertical; }
+    .cdk-card .link { color: var(--brand); }
     @media (max-width: 800px) { .cards { grid-template-columns: repeat(2,1fr); } .two-col { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -39,6 +50,30 @@
   <main id="dash" class="adm hidden">
     <h2>核心指标</h2>
     <div class="cards" id="cards"></div>
+
+    <h2>卡密管理（兑换码）</h2>
+    <div class="card cdk-card">
+      <div class="cdk-gen">
+        <label>单卡页数 <input id="cdkPages" type="number" value="300" min="1" /></label>
+        <label>生成数量 <input id="cdkCount" type="number" value="10" min="1" max="2000" /></label>
+        <label>批次备注 <input id="cdkBatch" type="text" placeholder="如 taobao0626" /></label>
+        <button id="cdkGen" class="btn-copy">生成卡密</button>
+      </div>
+      <div id="cdkResult" class="cdk-result hidden">
+        <div class="cdk-result-head">
+          <span id="cdkResultMsg"></span>
+          <span>
+            <button id="cdkCopy" class="link">复制全部</button>
+            <button id="cdkDownload" class="link">下载 .txt</button>
+          </span>
+        </div>
+        <textarea id="cdkCodes" readonly rows="6"></textarea>
+      </div>
+      <table style="margin-top:16px">
+        <thead><tr><th>批次</th><th>单卡页数</th><th>总数</th><th>已用</th><th>剩余</th><th>操作</th></tr></thead>
+        <tbody id="cdkBatches"></tbody>
+      </table>
+    </div>
 
     <div class="two-col">
       <div>

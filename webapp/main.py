@@ -336,6 +336,38 @@ async def admin_stats(admin=Depends(current_admin)):
     return stats
 
 
+@app.post("/api/admin/cdkeys/generate")
+async def admin_gen_cdkeys(pages: int = Form(...), count: int = Form(...),
+                           batch: str = Form(""), admin=Depends(current_admin)):
+    if pages <= 0:
+        raise HTTPException(400, "页数必须大于 0")
+    if count <= 0 or count > 2000:
+        raise HTTPException(400, "单次数量需为 1-2000")
+    from .gen_cdkeys import gen_code
+    batch = batch.strip() or None
+    codes = []
+    while len(codes) < count:
+        code = gen_code()
+        if db.create_cdkey(code, pages, batch):
+            codes.append(code)
+    return {"codes": codes, "pages": pages, "count": len(codes), "batch": batch or ""}
+
+
+@app.get("/api/admin/cdkeys")
+async def admin_list_cdkeys(admin=Depends(current_admin)):
+    return {"batches": [
+        {"batch": b["batch"], "pages": b["pages"], "total": b["total"],
+         "used": b["used"], "left": b["total"] - b["used"]}
+        for b in db.cdkey_batches()
+    ]}
+
+
+@app.get("/api/admin/cdkeys/export")
+async def admin_export_cdkeys(batch: str = "", pages: int = 0, admin=Depends(current_admin)):
+    codes = db.unused_codes(batch.strip() or None, pages or None)
+    return {"codes": codes}
+
+
 @app.get("/api/admin/recent")
 async def admin_recent(admin=Depends(current_admin)):
     return {

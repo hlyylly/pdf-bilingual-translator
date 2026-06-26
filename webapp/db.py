@@ -354,6 +354,33 @@ def cdkey_stats():
         return total, used
 
 
+def cdkey_batches():
+    """按 批次+单卡页数 汇总：总数/已用/剩余。"""
+    with _conn() as c:
+        return c.execute(
+            "SELECT COALESCE(batch,'(未命名)') AS batch, pages, COUNT(*) AS total, "
+            "SUM(CASE WHEN status='used' THEN 1 ELSE 0 END) AS used, "
+            "MAX(created_at) AS created FROM cdkeys "
+            "GROUP BY batch, pages ORDER BY created DESC"
+        ).fetchall()
+
+
+def unused_codes(batch=None, pages=None, limit=5000):
+    """导出未使用的卡密码列表。"""
+    q = "SELECT code FROM cdkeys WHERE status='unused'"
+    args = []
+    if batch is not None:
+        q += " AND COALESCE(batch,'(未命名)')=?"
+        args.append(batch)
+    if pages is not None:
+        q += " AND pages=?"
+        args.append(pages)
+    q += " ORDER BY created_at LIMIT ?"
+    args.append(limit)
+    with _conn() as c:
+        return [r["code"] for r in c.execute(q, args).fetchall()]
+
+
 # ---------- 运营统计 ----------
 def admin_stats():
     d = today()
