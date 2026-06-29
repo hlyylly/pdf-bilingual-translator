@@ -64,6 +64,7 @@ def _job_public(j):
         "pages": j["pages"],
         "target_lang": j["target_lang"],
         "target_label": lang_label(j["target_lang"]),
+        "out_mode": j["out_mode"],
         "status": j["status"],
         "phase": j["phase"],
         "progress": j["progress"],
@@ -245,11 +246,13 @@ async def me(user=Depends(current_user)):
 # ---------------- 上传 / 翻译 ----------------
 @app.post("/api/upload")
 async def upload(file: UploadFile = File(...), target_lang: str = Form(DEFAULT_TARGET),
-                 user=Depends(current_user)):
+                 out_mode: str = Form("dual"), user=Depends(current_user)):
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(400, "只接受 PDF 文件")
     if target_lang not in LANG_BY_CODE:
         target_lang = DEFAULT_TARGET
+    if out_mode not in ("dual", "mono"):
+        out_mode = "dual"
 
     data = await file.read()
     if len(data) > MAX_UPLOAD_MB * 1024 * 1024:
@@ -293,7 +296,7 @@ async def upload(file: UploadFile = File(...), target_lang: str = Form(DEFAULT_T
     if use_credits:
         db.add_credits(user["id"], -use_credits)
     db.create_job(job_id, user["id"], safe_name, pages, target_lang,
-                  used_free=use_free, used_credits=use_credits)
+                  used_free=use_free, used_credits=use_credits, out_mode=out_mode)
     worker.submit_job(job_id, user["id"], pdf_path)
 
     return {"job_id": job_id, "pages": pages, **_user_public(user)}
@@ -319,7 +322,8 @@ async def download(job_id: str, user=Depends(current_user)):
         raise HTTPException(404, "结果尚未就绪")
     if not os.path.exists(j["output_path"]):
         raise HTTPException(410, "文件已被清理")
-    download_name = os.path.splitext(j["filename"])[0] + "-双语对照.pdf"
+    tail = "-译文" if j["out_mode"] == "mono" else "-双语对照"
+    download_name = os.path.splitext(j["filename"])[0] + tail + ".pdf"
     return FileResponse(j["output_path"], media_type="application/pdf",
                         filename=download_name)
 

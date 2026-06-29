@@ -60,8 +60,12 @@ def _run(job_id: str, user_id: int, pdf_path: str):
         db.update_job(job_id, progress=total, phase="render", message="渲染对照 PDF…")
 
         base = os.path.splitext(os.path.basename(pdf_path))[0]
-        out_path = os.path.join(OUTPUT_DIR, f"{job_id}_{base}-dual.pdf")
-        render_dual_pdf(pdf_path, en_pages, zh_pages, page_images, out_path, log=log)
+        out_mode = job["out_mode"] if job else "dual"
+        include_original = out_mode != "mono"
+        suffix = "dual" if include_original else "zh"
+        out_path = os.path.join(OUTPUT_DIR, f"{job_id}_{base}-{suffix}.pdf")
+        render_dual_pdf(pdf_path, en_pages, zh_pages, page_images, out_path, log=log,
+                        include_original=include_original)
 
         db.update_job(job_id, status="done", phase="done", progress=total,
                       output_path=out_path, message="完成")

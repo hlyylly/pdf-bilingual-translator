@@ -107,13 +107,16 @@ def render_zh_page(doc, md_text, page_rect, images=None, log=print):
     return new_page
 
 
-def render_dual_pdf(input_path, en_pages, zh_pages, page_images, dual_path, log=print):
-    """生成逐页对照 PDF：原英文页 + 中文渲染页 交替。"""
+def render_dual_pdf(input_path, en_pages, zh_pages, page_images, dual_path, log=print,
+                    include_original=True):
+    """生成 PDF。include_original=True：原文页 + 译文页 逐页对照交替；
+    False：仅输出译文渲染页（每页尺寸沿用原文页）。"""
     doc_orig = fitz.open(input_path)
     doc_dual = fitz.open()
     n = doc_orig.page_count
     for i in range(n):
-        doc_dual.insert_pdf(doc_orig, from_page=i, to_page=i)
+        if include_original:
+            doc_dual.insert_pdf(doc_orig, from_page=i, to_page=i)
         render_zh_page(doc_dual, zh_pages.get(i, ""), doc_orig[i].rect,
                        images=(page_images or {}).get(i, {}), log=log)
     doc_dual.save(dual_path, garbage=4, deflate=True, clean=True)

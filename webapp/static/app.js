@@ -256,6 +256,9 @@ async function loadLanguages() {
     sel.value = localStorage.getItem("target_lang") || d.default;
   } catch (_) {}
   sel.addEventListener("change", () => localStorage.setItem("target_lang", sel.value));
+  const ms = $("#modeSelect");
+  ms.value = localStorage.getItem("out_mode") || "dual";
+  ms.addEventListener("change", () => localStorage.setItem("out_mode", ms.value));
 }
 
 // ---------- 上传 ----------
@@ -276,12 +279,14 @@ async function handleFiles(files) {
   if (!pdfs.length) return;
   const msg = $("#uploadMsg");
   const targetLang = $("#langSelect").value || "zh-Hans";
+  const outMode = $("#modeSelect").value || "dual";
   for (const f of pdfs) {
     msg.className = "msg";
     msg.textContent = `上传中：${f.name} …`;
     const fd = new FormData();
     fd.append("file", f);
     fd.append("target_lang", targetLang);
+    fd.append("out_mode", outMode);
     try {
       const r = await api("/api/upload", { method: "POST", body: fd });
       renderUser(r);
@@ -339,7 +344,7 @@ function jobCard(j) {
     <div class="job">
       <div class="job-top">
         <span class="job-name">${escapeHtml(j.filename)}
-          <small style="color:var(--sub)">· ${j.pages} 页 · 译为 ${escapeHtml(j.target_label || "")}</small></span>
+          <small style="color:var(--sub)">· ${j.pages} 页 · 译为 ${escapeHtml(j.target_label || "")} · ${j.out_mode === "mono" ? "仅译文" : "双语对照"}</small></span>
         <span class="badge ${j.status}">${STATUS_TEXT[j.status] || j.status}</span>
       </div>
       <div class="bar ${active ? "live" : ""}"><i style="width:${pct}%"></i></div>

@@ -50,6 +50,7 @@ def init_db():
                 used_free   INTEGER NOT NULL DEFAULT 0,
                 used_credits INTEGER NOT NULL DEFAULT 0,
                 target_lang TEXT NOT NULL DEFAULT 'zh-Hans',
+                out_mode    TEXT NOT NULL DEFAULT 'dual',
                 status      TEXT NOT NULL,
                 phase       TEXT NOT NULL DEFAULT '',
                 progress    INTEGER NOT NULL DEFAULT 0,
@@ -92,6 +93,8 @@ def init_db():
             c.execute("ALTER TABLE jobs ADD COLUMN used_free INTEGER NOT NULL DEFAULT 0")
         if "used_credits" not in jcols:
             c.execute("ALTER TABLE jobs ADD COLUMN used_credits INTEGER NOT NULL DEFAULT 0")
+        if "out_mode" not in jcols:
+            c.execute("ALTER TABLE jobs ADD COLUMN out_mode TEXT NOT NULL DEFAULT 'dual'")
         ucols = {r["name"] for r in c.execute("PRAGMA table_info(users)").fetchall()}
         if "credits" not in ucols:
             c.execute("ALTER TABLE users ADD COLUMN credits INTEGER NOT NULL DEFAULT 0")
@@ -218,14 +221,14 @@ def add_credits(user_id: int, pages: int) -> int:
 
 # ---------- 任务 ----------
 def create_job(job_id, user_id, filename, pages, target_lang="zh-Hans",
-               used_free=0, used_credits=0):
+               used_free=0, used_credits=0, out_mode="dual"):
     with _write_lock, _conn() as c:
         c.execute(
             """INSERT INTO jobs(id,user_id,filename,pages,used_free,used_credits,
-                                target_lang,status,total,created_at,updated_at)
-               VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+                                target_lang,out_mode,status,total,created_at,updated_at)
+               VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
             (job_id, user_id, filename, pages, used_free, used_credits,
-             target_lang, "queued", pages, _now(), _now()),
+             target_lang, out_mode, "queued", pages, _now(), _now()),
         )
 
 
